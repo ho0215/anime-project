@@ -1,67 +1,39 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANIVERSE - 서브컬처 플랫폼</title>
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-</head>
-<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-200 font-sans antialiased transition-colors duration-300">
+{% extends 'base.html' %}
 
-    <nav class="bg-white dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 sticky top-0 z-50 transition-colors duration-300">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                
-                <div class="flex items-center gap-6">
-                    <a href="/" class="text-2xl font-black text-violet-600 dark:text-indigo-400 tracking-tight">ANIVERSE</a>
-                    <div class="hidden md:flex space-x-4">
-                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium">일러스트</a>
-                        <a href="{% url 'deal:deal_board' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium">거래 / 장터</a>
-                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">일러스트</a>
-                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">굿즈 장터</a>
-                    </div>
+{% block content %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+    <section>
+        <div class="flex justify-between items-end mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">실시간 인기 창작물</h2>
+            </div>
+        </div>
+
+        <div class="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm break-inside-avoid hover:shadow-md transition">
+                <div class="h-48 bg-gray-200 dark:bg-gray-700 w-full object-cover"></div>
+                <div class="p-4">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-indigo-400 mb-2">#발로란트</span>
+                    <h3 class="font-bold text-gray-900 dark:text-white">제트 팬아트</h3>
                 </div>
-                
-                <div class="flex items-center gap-4">
-                    <button id="theme-toggle" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition">
-                        <span id="theme-icon">🌙</span>
-                    </button>
+            </div>
+            
+            <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm break-inside-avoid hover:shadow-md transition">
+                <div class="h-64 bg-gray-200 dark:bg-gray-700 w-full object-cover"></div>
+                <div class="p-4">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-indigo-400 mb-2">#로스트아크</span>
+                    <h3 class="font-bold text-gray-900 dark:text-white">도화가 코스프레</h3>
+                </div>
+            </div>
 
-                    {% if user.is_authenticated %}
-                        <span class="text-sm font-bold text-violet-600 dark:text-indigo-400">{{ user.username }}님</span>
-                        
-                        <a href="{% url 'accounts:profile' %}" class="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition">
-                            마이페이지
-                        </a>
-                        
-                        <form method="POST" action="{% url 'accounts:logout' %}" class="inline m-0 p-0">
-                            {% csrf_token %}
-                            <button type="submit" class="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition bg-transparent border-none cursor-pointer focus:outline-none">
-                                로그아웃
-                            </button>
-                        </form>
-                        
-                        <button class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-violet-600/10 transition">
-                            작품 올리기
-                        </button>
-                    {% else %}
-                        <a href="{% url 'accounts:login' %}" class="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white transition">
-                            로그인
-                        </a>
-                        <a href="{% url 'accounts:signup' %}" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                            회원가입
-                        </a>
-                    {% endif %}
+            <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm break-inside-avoid hover:shadow-md transition">
+                <div class="h-56 bg-gray-200 dark:bg-gray-700 w-full object-cover"></div>
+                <div class="p-4">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-indigo-400 mb-2">#마인크래프트</span>
+                    <h3 class="font-bold text-gray-900 dark:text-white">도트 그래픽 아웃풋</h3>
                 </div>
             </div>
         </div>
-    </nav>
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
-        <section>
-            <div class="flex justify-between items-end mb-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">실시간 인기 창작물</h2>
-                </div>
-            </div>
+    </section>
+</main>
+{% endblock %}

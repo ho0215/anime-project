@@ -1,16 +1,10 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>회원가입 - ANIVERSE</title>
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-</head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen flex items-center justify-center font-sans antialiased transition-colors duration-300">
+{% extends 'base.html' %}
 
-    <div class="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 space-y-6my-8">
+{% block content %}
+<div class="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-12">
+    <div class="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 space-y-6">
         <div class="text-center space-y-2">
-            <a href="/" class="text-3xl font-black text-violet-600 dark:text-indigo-400 tracking-tight">ANIVERSE</a>
+            <h1 class="text-3xl font-black text-violet-600 dark:text-indigo-400 tracking-tight">ANIVERSE</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400">새로운 크리에이터 계정을 생성합니다.</p>
         </div>
 
@@ -40,17 +34,16 @@
             <a href="{% url 'accounts:login' %}" class="text-violet-600 dark:text-indigo-400 font-semibold hover:underline pl-1">로그인</a>
         </div>
     </div>
+</div>
 
-    <script>
-        document.querySelectorAll('input').forEach(input => {
-            if(input.type !== 'checkbox') {
-                input.className = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-indigo-400 transition text-sm";
-            }
-        });
-        // 장고 기본 헬프 텍스트 내의 ul 태그 간격 조절
-        document.querySelectorAll('.space-y-1 ul').forEach(ul => {
-            ul.className = "list-disc pl-4 space-y-0.5 mt-1 text-[11px]";
-        });
-    </script>
-</body>
-</html>
+<script>
+    document.querySelectorAll('input').forEach(input => {
+        if(input.type !== 'checkbox') {
+            input.className = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-indigo-400 transition text-sm";
+        }
+    });
+    document.querySelectorAll('.space-y-1 ul').forEach(ul => {
+        ul.className = "list-disc pl-4 space-y-0.5 mt-1 text-[11px]";
+    });
+</script>
+{% endblock %}

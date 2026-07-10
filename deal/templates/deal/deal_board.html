@@ -1,138 +1,80 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>서브컬처 플랫폼 (거래/장터)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+{% extends 'base.html' %}
+
+{% block content %}
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
     
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-        }
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-</head>
-<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-200 font-sans antialiased transition-colors duration-300">
-
-    <nav class="bg-white dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 sticky top-0 z-50 transition-colors duration-300">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center gap-6">
-                    <a href="{% url 'anime:home' %}" class="text-2xl font-black text-violet-600 dark:text-indigo-400 tracking-tight">ANIVERSE</a>
-                    <div class="hidden md:flex space-x-4">
-                        <a href="{% url 'anime:home' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium">일러스트</a>
-                        <a href="{% url 'deal:deal_board' %}" class="text-violet-600 dark:text-indigo-400 font-bold">거래 / 장터</a>
-                    </div>
-                </div>
-                
-                <div class="flex items-center gap-4">
-                    <button id="theme-toggle" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition">
-                        <span id="theme-icon">🌙</span>
-                    </button>
-
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">김지윤님</span>
-                    <a href="#" class="bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-150">
-                        작품 올리기
-                    </a>
-                </div>
-            </div>
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-gray-100 dark:border-gray-800">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">거래 / 장터</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">최애의 굿즈를 안전하게 거래해 보세요.</p>
         </div>
-    </nav>
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-gray-100 dark:border-gray-800">
-            <div>
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">거래 / 장터</h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">최애의 굿즈를 안전하게 거래해 보세요.</p>
+        <div class="flex gap-2 w-full md:max-w-sm">
+            <input type="text" placeholder="작품명, 캐릭터 검색..." class="w-full px-4 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
+            <button class="bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg whitespace-nowrap transition">검색</button>
+        </div>
+    </div>
+
+    <div class="flex justify-between items-center">
+        <div class="flex gap-2">
+            <a href="{% url 'deal:deal_board' %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if not current_category %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">전체</a>
+            <a href="{% url 'deal:deal_board' %}?category=acrylic" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'acrylic' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">아크릴</a>
+            <a href="{% url 'deal:deal_board' %}?category=paper" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'paper' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">지류/파샤</a>
+        </div>
+        <a href="#" class="bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition">
+            + 굿즈 판매하기
+        </a>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md dark:hover:border-indigo-500 transition duration-300 flex flex-col justify-between">
+            <div class="relative bg-gray-100 dark:bg-gray-900 aspect-square flex items-center justify-center text-gray-400 text-xs">
+                <span>[굿즈 대표 이미지]</span>
+                <span class="absolute top-2 left-2 bg-violet-600 dark:bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">판매중</span>
             </div>
-            
-            <div class="flex gap-2 w-full md:max-w-sm">
-                <input type="text" placeholder="작품명, 캐릭터 검색..." class="w-full px-4 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
-                <button class="bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg whitespace-nowrap transition">검색</button>
+            <div class="p-4 space-y-1.5">
+                <span class="inline-block px-2 py-0.5 bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-indigo-300 text-[10px] font-bold rounded-md">#주술회전</span>
+                <h3 class="font-bold text-gray-900 dark:text-white text-sm line-clamp-1">고죠 사토루 2024 디오라마 아크릴</h3>
+                <div class="text-base font-black text-gray-900 dark:text-white">22,000원</div>
+                <div class="flex justify-between text-[11px] text-gray-400 dark:text-gray-500 pt-1">
+                    <span>반택/준등기</span>
+                    <span>방금 전</span>
+                </div>
             </div>
         </div>
 
-        <div class="flex justify-between items-center">
-            <div class="flex gap-2">
-                <a href="{% url 'deal:deal_board' %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if not current_category %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">전체</a>
-                <a href="{% url 'deal:deal_board' %}?category=acrylic" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'acrylic' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">아크릴</a>
-                <a href="{% url 'deal:deal_board' %}?category=paper" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'paper' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">지류/파샤</a>
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md dark:hover:border-indigo-500 transition duration-300 flex flex-col justify-between">
+            <div class="relative bg-gray-100 dark:bg-gray-900 aspect-square flex items-center justify-center text-gray-400 text-xs">
+                <span>[굿즈 대표 이미지]</span>
+                <span class="absolute top-2 left-2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">예약중</span>
             </div>
-            <a href="#" class="bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition">
-                + 굿즈 판매하기
-            </a>
+            <div class="p-4 space-y-1.5">
+                <span class="inline-block px-2 py-0.5 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 text-[10px] font-bold rounded-md">#프로세카</span>
+                <h3 class="font-bold text-gray-900 dark:text-white text-sm line-clamp-1">에나 파샤코레 10장 일괄 판매</h3>
+                <div class="text-base font-black text-gray-900 dark:text-white">15,000원</div>
+                <div class="flex justify-between text-[11px] text-gray-400 dark:text-gray-500 pt-1">
+                    <span>끼택/일택</span>
+                    <span>15분 전</span>
+                </div>
+            </div>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md dark:hover:border-indigo-500 transition duration-300 flex flex-col justify-between">
-                <div class="relative bg-gray-100 dark:bg-gray-900 aspect-square flex items-center justify-center text-gray-400 text-xs">
-                    <span>[굿즈 대표 이미지]</span>
-                    <span class="absolute top-2 left-2 bg-violet-600 dark:bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">판매중</span>
-                </div>
-                <div class="p-4 space-y-1.5">
-                    <span class="inline-block px-2 py-0.5 bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-indigo-300 text-[10px] font-bold rounded-md">#주술회전</span>
-                    <h3 class="font-bold text-gray-900 dark:text-white text-sm line-clamp-1">고죠 사토루 2024 디오라마 아크릴</h3>
-                    <div class="text-base font-black text-gray-900 dark:text-white">22,000원</div>
-                    <div class="flex justify-between text-[11px] text-gray-400 dark:text-gray-500 pt-1">
-                        <span>반택/준등기</span>
-                        <span>방금 전</span>
-                    </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden opacity-50 flex flex-col justify-between">
+            <div class="relative bg-gray-200 dark:bg-gray-950 aspect-square flex items-center justify-center text-gray-400 text-xs">
+                <span class="text-gray-500 font-bold text-sm">판매 완료</span>
+            </div>
+            <div class="p-4 space-y-1.5">
+                <span class="inline-block px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px] font-bold rounded-md">#보컬로이드</span>
+                <h3 class="font-bold text-gray-400 dark:text-gray-500 text-sm line-clamp-1">하츠네 미쿠 누이구루미 인형</h3>
+                <div class="text-base font-black text-gray-400 dark:text-gray-500">30,000원</div>
+                <div class="flex justify-between text-[11px] text-gray-400 dark:text-gray-500 pt-1">
+                    <span>직거래/택배</span>
+                    <span>2시간 전</span>
                 </div>
             </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md dark:hover:border-indigo-500 transition duration-300 flex flex-col justify-between">
-                <div class="relative bg-gray-100 dark:bg-gray-900 aspect-square flex items-center justify-center text-gray-400 text-xs">
-                    <span>[굿즈 대표 이미지]</span>
-                    <span class="absolute top-2 left-2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">예약중</span>
-                </div>
-                <div class="p-4 space-y-1.5">
-                    <span class="inline-block px-2 py-0.5 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 text-[10px] font-bold rounded-md">#프로세카</span>
-                    <h3 class="font-bold text-gray-900 dark:text-white text-sm line-clamp-1">에나 파샤코레 10장 일괄 판매</h3>
-                    <div class="text-base font-black text-gray-900 dark:text-white">15,000원</div>
-                    <div class="flex justify-between text-[11px] text-gray-400 dark:text-gray-500 pt-1">
-                        <span>끼택/일택</span>
-                        <span>15분 전</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden opacity-50 flex flex-col justify-between">
-                <div class="relative bg-gray-200 dark:bg-gray-950 aspect-square flex items-center justify-center text-gray-400 text-xs">
-                    <span class="text-gray-500 font-bold text-sm">판매 완료</span>
-                </div>
-                <div class="p-4 space-y-1.5">
-                    <span class="inline-block px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px] font-bold rounded-md">#보컬로이드</span>
-                    <h3 class="font-bold text-gray-400 dark:text-gray-500 text-sm line-clamp-1">하츠네 미쿠 누이구루미 인형</h3>
-                    <div class="text-base font-black text-gray-400 dark:text-gray-500">30,000원</div>
-                    <div class="flex justify-between text-[11px] text-gray-400 dark:text-gray-500 pt-1">
-                        <span>직거래/택배</span>
-                        <span>2시간 전</span>
-                    </div>
-                </div>
-            </div>
-
         </div>
-    </main>
 
-    <script>
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeIcon = document.getElementById('theme-icon');
-        const htmlElement = document.documentElement;
-
-        themeToggleBtn.addEventListener('click', () => {
-            htmlElement.classList.toggle('dark');
-            if (htmlElement.classList.contains('dark')) {
-                themeIcon.textContent = '☀️';
-            } else {
-                themeIcon.textContent = '🌙';
-            }
-        });
-    </script>
-</body>
-</html>
+    </div>
+</main>
+{% endblock %}

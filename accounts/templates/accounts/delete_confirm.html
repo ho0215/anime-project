@@ -1,13 +1,7 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>회원 탈퇴 확인</title>
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-</head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen flex items-center justify-center font-sans antialiased transition-colors duration-300">
+{% extends 'base.html' %}
 
+{% block content %}
+<div class="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-12">
     <div class="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-center space-y-6">
         <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
             <span class="text-3xl">⚠️</span>
@@ -22,16 +16,13 @@
 
         <form method="POST" action="{% url 'accounts:delete_account' %}" class="flex flex-col sm:flex-row gap-3 pt-2">
             {% csrf_token %}
-            
-            <a href="/" class="flex-1 px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 text-center transition">
+            <a href="{% url 'accounts:profile' %}" class="flex-1 px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 text-center transition">
                 취소하고 돌아가기
             </a>
-            
             <button type="submit" class="flex-1 px-5 py-3 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-sm shadow-red-600/20 transition">
                 네, 탈퇴합니다
             </button>
         </form>
     </div>
-
-</body>
-</html>
+</div>
+{% endblock %}
