@@ -1,5 +1,9 @@
 from django.shortcuts import render
+from .models import Anime
+
+def anime_list(request):
+    animes = Anime.objects.all()
+    return render(request, 'anime_list.html', {'animes': animes})
 
 def home(request):
-    # templates 폴더 안에 있는 home.html을 렌더링해서 보여줍니다.
     return render(request, 'home.html')
