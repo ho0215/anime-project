@@ -3,7 +3,7 @@ from django.contrib.auth.models import User # 장고 기본 유저 모델 활용
 
 class Goods(models.Model):
     # 카테고리 정의
-    CATEGORY_CHOICES = [
+    CATEGORY_CHOICES = [ 
         ('acrylic', '아크릴 스탠드/키링'),
         ('badge', '캔뱃지/핀버튼'),
         ('figure', '피규어/넨도로이드'),
@@ -32,7 +32,7 @@ class Goods(models.Model):
     
     # 대표 이미지 (Pillow 라이브러리 필요)
     # 만약 이미지 필드 에러 나면 우선 지우고 주석 해제해서 문자열(URL) 필드로 임시 대체 가능합니다.
-    image = models.CharField(max_length=500, blank=True, null=True, verbose_name="굿즈 사진 URL")
+    image = models.ImageField(upload_to='goods_images/', blank=True, null=True, verbose_name="굿즈 사진")
     
     description = models.TextField(verbose_name="상세 설명")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="등록일")

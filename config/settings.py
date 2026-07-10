@@ -79,8 +79,15 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'mydb',       # MariaDB 안에 미리 만들어둔 데이터베이스 이름
+        'USER': 'ho0215',                # MariaDB 계정명
+        'PASSWORD': 'ho0215',   # MariaDB 패스워드
+        'HOST': '127.0.0.1',           # 로컬에서 같이 돌리면 localhost 또는 127.0.0.1
+        'PORT': '3306',                # MariaDB 기본 포트
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        }
     }
 }
 
@@ -123,6 +130,7 @@ STATIC_URL = 'static/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 LOGIN_URL = '/accounts/login/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
