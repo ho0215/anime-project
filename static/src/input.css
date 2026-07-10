@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    /* 버튼 스타일 압축 */
+    .btn-primary {
+        @apply bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-150;
+    }
+
+    /* 갤러리 카드 스타일 압축 */
+    .gallery-card {
+        @apply bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md dark:hover:border-indigo-500 transition duration-300;
+    }
+
+    /* 해시태그 스타일 압축 */
+    .tag-badge {
+        @apply inline-block px-2 py-1 bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-indigo-300 text-xs font-bold rounded-md mb-2;
+    }
+}

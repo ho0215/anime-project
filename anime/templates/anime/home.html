@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>서브컬처 플랫폼 (테마 전환)</title>
+    <!-- 테일윈드 CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 테일윈드 다크모드 설정 (class 기반으로 동작하게 만듦) -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+
+    <style>
+        .masonry-grid { column-count: 2; column-gap: 1rem; }
+        @media (min-width: 768px) { .masonry-grid { column-count: 3; } }
+        @media (min-width: 1024px) { .masonry-grid { column-count: 4; } }
+        .masonry-item { break-inside: avoid; margin-bottom: 1rem; }
+    </style>
+</head>
+
+<!-- 기본 배경과 텍스트 (다크모드일 때 bg-gray-900, text-gray-200으로 전환) -->
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-200 font-sans antialiased transition-colors duration-300">
+
+    <!-- 1. 네비게이션 바 -->
+    <nav class="bg-white dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 sticky top-0 z-50 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-6">
+                    <a href="#" class="text-2xl font-black text-violet-600 dark:text-indigo-400 tracking-tight">ANIVERSE</a>
+                    <div class="hidden md:flex space-x-4">
+                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium">일러스트</a>
+                        <a href="#" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium">굿즈 장터</a>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <!-- 테마 전환 토글 버튼 -->
+                    <button id="theme-toggle" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition">
+                        <span id="theme-icon">🌙</span>
+                    </button>
+
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">김지윤님</span>
+                    <button class="bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-150">
+                        작품 올리기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 메인 컨텐츠 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+        <!-- 2. 일러스트 갤러리 -->
+        <section>
+            <div class="flex justify-between items-end mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">실시간 인기 창작물</h2>
+                </div>
+            </div>
+
+            <div class="masonry-grid">
+                <!-- 카드 컴포넌트: 라이트모드(bg-white, border-gray-100) / 다크모드(dark:bg-gray-800, dark:border-gray-700) -->
+                <div class="masonry-item bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md dark:hover:border-indigo-500 transition duration-300">
+                    <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80" alt="팬아트" class="w-full h-auto object-cover">
+                    <div class="p-4">
+                        <span class="inline-block px-2 py-1 bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-indigo-300 text-xs font-bold rounded-md mb-2">#발로란트</span>
+                        <h3 class="font-bold text-gray-900 dark:text-white">제트 팬아트 그려봤습니다</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 테마 전환용 자바스크립트 -->
+    <script>
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const htmlElement = document.documentElement;
+
+        themeToggleBtn.addEventListener('click', () => {
+            // html 태그에 'dark' 클래스를 넣었다 뺐다 합니다.
+            htmlElement.classList.toggle('dark');
+            
+            // 아이콘 변경
+            if (htmlElement.classList.contains('dark')) {
+                themeIcon.textContent = '☀️'; // 다크모드일 땐 해 아이콘
+            } else {
+                themeIcon.textContent = '🌙'; // 라이트모드일 땐 달 아이콘
+            }
+        });
+    </script>
+</body>
+</html>

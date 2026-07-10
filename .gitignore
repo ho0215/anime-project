@@ -1,0 +1,15 @@
+# 파이썬 가상환경 및 캐시
+workenv/
+venv/
+__pycache__/
+*.pyc
+
+# 장고 로컬 데이터베이스 (각자 컴퓨터에서 생성해야 함)
+db.sqlite3
+
+# 테일윈드 CLI 실행파일 (각자 다운로드)
+tailwindcss
+node_modules/
+
+# 환경 변수 (보안)
+.env
