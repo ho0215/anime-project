@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'accounts',
     'deal.apps.DealConfig',
     'community.apps.CommunityConfig',
+    'ckeditor',
+    'ckeditor_uploader',
 ]
 
 
@@ -136,3 +138,11 @@ STATICFILES_DIRS = [
 ]
 
 LOGIN_URL = '/accounts/login/'
+
+
+# Media 파일(사용자가 업로드하는 파일) 기본 설정이 없다면 먼저 추가
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # 또는 Path(BASE_DIR) / 'media' (장고 버전에 맞게)
+
+# CKEditor가 요구하는 에러 메시지 속 그 설정!
+CKEDITOR_UPLOAD_PATH = 'uploads/'

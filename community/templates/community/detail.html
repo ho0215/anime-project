@@ -1,0 +1,79 @@
+{% extends 'home.html' %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto px-4 py-10">
+    <!-- 상단 네비게이션 / 카테고리 태그 -->
+    <div class="mb-4">
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+            {% if post.board_type == 'notice' %}공지 사항
+            {% elif post.board_type == 'qna' %}질문 답변
+            {% elif post.board_type == 'free' %}자유 게시판
+            {% elif post.board_type == 'info' %}정보 공유
+            {% else %}{{ post.board_type }}
+            {% endif %}
+        </span>
+    </div>
+
+    <!-- 제목 영역 -->
+    <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-6">
+        <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
+            {{ post.title }}
+        </h1>
+        
+        <!-- 작성자 정보 및 메타데이터 -->
+        <div class="flex items-center justify-between mt-4 text-sm text-gray-500 dark:text-gray-400">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center text-purple-600 dark:text-purple-300 font-bold text-xs">
+                    U
+                </div>
+                <span class="font-medium text-gray-700 dark:text-gray-300">{{ post.author.username|default:"익명 사용자" }}</span>
+                <span class="text-gray-300 dark:text-gray-600">|</span>
+                <span>{{ post.created_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            
+            <!-- 조회수 등이 있다면 표기 -->
+            <div class="flex items-center gap-2">
+                <span>조회수 {{ post.views|default:0 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- [수정된 부분] 대표 이미지 출력 영역 -->
+    {% if post.image %}
+    <div class="mb-6">
+        <!-- 이미지 섹션 타이틀 표시 -->
+        <span class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">첨부 이미지</span>
+        <div class="rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 max-h-[500px] flex justify-center bg-gray-50 dark:bg-gray-900 p-2">
+            <!-- src 경로가 미디어 루트를 타도록 설정 -->
+            <img src="{{ post.image.url }}" alt="Uploaded Image" class="object-contain max-w-full max-h-[480px] rounded-xl">
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 3. 본문 내용 섹션 (CKEditor로 꾸민 데이터 렌더링) -->
+    <div class="p-6 md:p-8 border border-gray-100 dark:border-gray-700 rounded-2xl bg-white dark:bg-gray-800 shadow-sm min-h-[300px]">
+        <!-- safe 필터가 있어야 에디터의 글자 색, 크기, 정렬 HTML 태그가 정상 작동합니다 -->
+        <div class="prose max-w-none text-gray-900 dark:text-gray-200 leading-relaxed break-words">
+            {{ post.content|safe }}
+        </div>
+    </div>
+
+    <!-- 하단 메뉴 버튼 영역 (목록으로, 수정, 삭제) -->
+    <div class="flex justify-between items-center pt-6 pb-12">
+        <a href="{% url 'community:board_list' %}" class="px-5 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+            목록으로
+        </a>
+        
+        <!-- 현재 로그인 유저와 작성자가 같을 때만 노출 -->
+        <div class="flex gap-2">
+            <a href="#" class="px-5 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                수정
+            </a>
+            <a href="#" class="px-5 py-2.5 bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400 rounded-xl font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition">
+                삭제
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

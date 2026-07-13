@@ -1,9 +1,8 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Post
+from .forms import PostForm  # 1번에서 만든 폼 임포트
 
-
-# Create your views here.
 def board_list(request):
     board_type = request.GET.get('board_type', 'all')
     
@@ -24,7 +23,12 @@ def board_list(request):
 
 def post_detail(request, pk):
     post = get_object_or_404(Post, pk=pk)
-    post.view_count += 1
+    # 기존 detail.html 가이드 변수명(views)에 맞춰 view_count 대신 views 사용
+    # 만약 DB 모델명이 view_count라면 post.view_count += 1 로 유지하셔도 됩니다.
+    if hasattr(post, 'views'):
+        post.views += 1
+    else:
+        post.view_count += 1 
     post.save()
     return render(request, 'community/detail.html', {'post': post})
 
@@ -32,19 +36,22 @@ def post_detail(request, pk):
 @login_required
 def post_create(request):
     if request.method == 'POST':
-        board_type = request.POST['board_type']
+        board_type = request.POST.get('board_type')
 
         # 공지사항은 관리자만 작성 가능
         if board_type == 'notice' and not request.user.is_staff:
-            return redirect('board_list')
+            return redirect('community:board_list')
 
+        # 에디터 데이터를 포함한 전체 Post 생성
         Post.objects.create(
             board_type=board_type,
-            title=request.POST['title'],
-            content=request.POST['content'],
+            title=request.POST.get('title'),
+            content=request.POST.get('content'),  # CKEditor 내부 HTML 내용이 이쪽으로 들어옵니다.
             author=request.user,
             image=request.FILES.get('image'),
         )
-        return redirect('board_list')
+        return redirect('community:board_list')
 
-    return render(request, 'community/post_form.html')
+    # GET 요청일 때 에디터가 포함된 폼을 템플릿으로 넘겨줍니다.
+    form = PostForm()
+    return render(request, 'community/post_form.html', {'form': form})
