@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'anime',
     'accounts',
-    'deal.apps.DealConfig'
+    'deal.apps.DealConfig',
+    'community.apps.CommunityConfig',
 ]
 
 
@@ -80,6 +81,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
+<<<<<<< HEAD
         'NAME': 'mydb',       # MariaDB 안에 미리 만들어둔 데이터베이스 이름
         'USER': 'ho0215',                # MariaDB 계정명
         'PASSWORD': 'ho0215',   # MariaDB 패스워드
@@ -88,6 +90,16 @@ DATABASES = {
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         }
+=======
+        'NAME': 'mydb',          # 실제 MariaDB에 생성한 DB 이름
+        'USER': 'ho0215',              # MariaDB 계정 이름
+        'PASSWORD': 'ho0215', # 본인이 설정한 비밀번호
+        'HOST': 'localhost',
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+>>>>>>> main
     }
 }
 
@@ -134,3 +146,5 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+
+LOGIN_URL = '/accounts/login/'

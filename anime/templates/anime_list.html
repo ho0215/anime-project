@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<main class="max-w-7xl mx-auto px-4 py-8">
+    <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">애니메이션 목록</h2>
+    
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        {% for anime in animes %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
+            <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="w-full h-64 object-cover">
+            <div class="p-4">
+                <h3 class="font-bold text-gray-900 dark:text-white truncate">{{ anime.title }}</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">평점: {{ anime.score }}</p>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-gray-500">등록된 애니메이션이 없습니다. 데이터 동기화를 먼저 해주세요!</p>
+        {% endfor %}
+    </div>
+</main>
+{% endblock %}
