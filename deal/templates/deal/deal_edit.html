@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="pb-4 border-b border-gray-100 dark:border-gray-800 mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">게시글 수정하기</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">변경할 굿즈의 정보를 정확하게 수정해 주세요.</p>
+    </div>
+
+    <form action="{% url 'deal:deal_edit' goods.id %}" method="POST" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        <div class="space-y-2">
+            <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">상품 이미지 변경</label>
+            
+            <div class="grid grid-cols-3 gap-4" style="max-width: 500px;">
+                <label id="drop-zone" class="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-violet-500 dark:hover:border-indigo-500 rounded-lg cursor-pointer bg-white dark:bg-gray-800 transition" 
+                    style="height: 120px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" 
+                        style="width: 32px; height: 32px;" class="text-gray-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                    </svg>
+                    <span style="font-size: 11px;" class="text-gray-400 mt-1">새 이미지 등록</span>
+                    <input type="file" id="file-input" name="images" accept="image/*" class="hidden" multiple>
+                </label>
+                
+                <div id="preview-1" class="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg flex items-center justify-center text-gray-400 border-dashed overflow-hidden"
+                    style="height: 120px; font-size: 11px;">
+                    {% if goods.image %}
+                        <img src="{{ goods.image.url }}" class="w-full h-full object-cover">
+                    {% else %}
+                        <span>미리보기 1</span>
+                    {% endif %}
+                </div>
+                
+                <div id="preview-2" class="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg flex items-center justify-center text-gray-400 border-dashed overflow-hidden"
+                    style="height: 120px; font-size: 11px;">
+                    <span>미리보기 2</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <label for="title" class="block text-sm font-bold text-gray-700 dark:text-gray-300">글 제목</label>
+            <input type="text" id="title" name="title" value="{{ goods.title }}" required
+                   class="w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="space-y-2">
+                <label for="category" class="block text-sm font-bold text-gray-700 dark:text-gray-300">카테고리</label>
+                <select id="category" name="category" required
+                        class="w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
+                    <option value="acrylic" {% if goods.category == 'acrylic' %}selected{% endif %}>아크릴</option>
+                    <option value="paper" {% if goods.category == 'paper' %}selected{% endif %}>지류 / 파샤</option>
+                    <option value="plush" {% if goods.category == 'plush' %}selected{% endif %}>누이 / 인형</option>
+                    <option value="etc" {% if goods.category == 'etc' %}selected{% endif %}>기타 굿즈</option>
+                </select>
+            </div>
+            
+            <div class="space-y-2">
+                <label for="status" class="block text-sm font-bold text-gray-700 dark:text-gray-300">거래 상태</label>
+                <select id="status" name="status" required
+                        class="w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
+                    <option value="sale" {% if goods.status == 'sale' %}selected{% endif %}>판매중</option>
+                    <option value="reserved" {% if goods.status == 'reserved' %}selected{% endif %}>예약중</option>
+                    <option value="sold" {% if goods.status == 'sold' %}selected{% endif %}>판매완료</option>
+                </select>
+            </div>
+
+            <div class="space-y-2">
+                <label for="tag" class="block text-sm font-bold text-gray-700 dark:text-gray-300">작품명 (태그)</label>
+                <input type="text" id="tag" name="tag" value="{{ goods.anime_title }}" placeholder="예: 주술회전, 프로세카"
+                       class="w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+                <label for="price" class="block text-sm font-bold text-gray-700 dark:text-gray-300">판매 가격</label>
+                <div class="relative">
+                    <input type="number" id="price" name="price" value="{{ goods.price }}" required min="0"
+                           class="w-full pl-4 pr-12 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
+                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">원</span>
+                </div>
+            </div>
+            <div class="space-y-2">
+                <label for="delivery" class="block text-sm font-bold text-gray-700 dark:text-gray-300">가능한 배송/거래 방식</label>
+                <input type="text" id="delivery" name="delivery" value="{{ goods.shipping_methods }}" required
+                       class="w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <label for="content" class="block text-sm font-bold text-gray-700 dark:text-gray-300">상품 설명</label>
+            <textarea id="content" name="content" rows="6" required
+                      class="w-full px-4 py-3 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white resize-none">{{ goods.description }}</textarea>
+        </div>
+
+        <div class="flex gap-4 pt-6" style="max-width: 500px; width: 100%;">
+            <a href="{% url 'deal:deal_detail' goods.id %}" 
+            class="flex items-center justify-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-lg transition"
+            style="width: 50%; height: 46px; padding: 0 24px;">
+                변경 취소
+            </a>
+            
+            <button type="submit" 
+                    class="flex items-center justify-center bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-sm font-bold rounded-lg shadow-sm transition"
+                    style="width: 50%; height: 46px; padding: 0 24px;">
+                수정 완료
+            </button>
+        </div>
+    </form>
+</main>
+
+<script src="{% static 'deal/js/upload.js' %}?v=1.0.1"></script>
+{% endblock %}

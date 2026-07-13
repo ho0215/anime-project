@@ -32,12 +32,15 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'anime',
     'accounts',
     'deal.apps.DealConfig',
@@ -73,6 +76,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 
 
 # Database
@@ -81,16 +85,6 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-<<<<<<< HEAD
-        'NAME': 'mydb',       # MariaDB 안에 미리 만들어둔 데이터베이스 이름
-        'USER': 'ho0215',                # MariaDB 계정명
-        'PASSWORD': 'ho0215',   # MariaDB 패스워드
-        'HOST': '127.0.0.1',           # 로컬에서 같이 돌리면 localhost 또는 127.0.0.1
-        'PORT': '3306',                # MariaDB 기본 포트
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        }
-=======
         'NAME': 'mydb',          # 실제 MariaDB에 생성한 DB 이름
         'USER': 'ho0215',              # MariaDB 계정 이름
         'PASSWORD': 'ho0215', # 본인이 설정한 비밀번호
@@ -99,7 +93,6 @@ DATABASES = {
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
->>>>>>> main
     }
 }
 
@@ -148,3 +141,9 @@ STATICFILES_DIRS = [
 ]
 
 LOGIN_URL = '/accounts/login/'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
