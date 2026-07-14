@@ -15,4 +15,6 @@ urlpatterns = [
     path('chats/', views.deal_chat_list, name='deal_chat_list'),
     path('chat/<int:room_id>/leave/', views.deal_chat_leave, name='deal_chat_leave'),
     path('goods/<int:goods_id>/status-ajax/', views.change_goods_status_ajax, name='change_goods_status_ajax'),
+    path('<int:goods_id>/wishlist-ajax/', views.toggle_wishlist, name='toggle_wishlist'),
+    path('wishlist/', views.deal_wishlist, name='deal_wishlist'),
 ]

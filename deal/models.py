@@ -36,6 +36,7 @@ class Goods(models.Model):
     
     description = models.TextField(verbose_name="상세 설명")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="등록일")
+    view_count = models.PositiveIntegerField(default=0, verbose_name="조회수")
 
     def __str__(self):
         return f"[{self.get_status_display()}] {self.title} - {self.price}원"
@@ -76,3 +77,16 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender.username}: {self.content[:20]}"
+
+
+class Wishlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlists', verbose_name="유저")
+    goods = models.ForeignKey(Goods, on_delete=models.CASCADE, related_name='wishlisted_by', verbose_name="찜한 굿즈")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="찜한 시각")
+
+    class Meta:
+        unique_together = ('user', 'goods')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username}님이 찜한 {self.goods.title}"

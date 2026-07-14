@@ -4,30 +4,35 @@ from .models import Goods
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import Q, Max
-from .models import Goods, ChatRoom, Message
+from django.db.models import Q, Max, F
+from .models import Goods, ChatRoom, Message, Wishlist
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
 def deal_board(request):
     category_slug = request.GET.get('category')
     search_query = request.GET.get('q', '').strip() # 🛠️ 검색어 가져오기 (공백 제거)
-    
+    available_only = request.GET.get('available_only') == '1'
+
     # 기본 쿼리셋 선언
     goods_list = Goods.objects.all()
-    
+
     # 1. 카테고리 필터링 (기존 로직 유지)
     if category_slug:
         goods_list = goods_list.filter(category=category_slug)
-        
+
     # 2. 🛠️ 검색어 필터링 추가 (제목 또는 내용에 키워드가 포함된 경우)
     if search_query:
         goods_list = goods_list.filter(
-            Q(title__icontains=search_query) | 
+            Q(title__icontains=search_query) |
             Q(description__icontains=search_query) |
             Q(anime_title__icontains=search_query) # 🛠️ 태그(#귀멸의칼날 등) 검색 조건 추가!
         )
-        
+
+    # 2-1. 판매완료 상품 제외 (판매중만 보기 체크 시)
+    if available_only:
+        goods_list = goods_list.filter(status__in=['sale', 'reserved'])
+
     # 3. 최신순 정렬
     goods_list = goods_list.order_by('-created_at')
         
@@ -49,7 +54,8 @@ def deal_board(request):
     return render(request, 'deal/deal_board.html', {
         'goods_list': goods_list,
         'current_category': category_slug,
-        'search_query': search_query # 🛠️ 템플릿에 검색어 유지용으로 전달
+        'search_query': search_query, # 🛠️ 템플릿에 검색어 유지용으로 전달
+        'available_only': available_only
     })
 
 @login_required(login_url='accounts:login')
@@ -112,9 +118,18 @@ def deal_bump(request, goods_id):
 def deal_detail(request, goods_id):
     # goods_id에 해당하는 글을 가져오고, 없으면 404 에러를 띄웁니다.
     goods = get_object_or_404(Goods, id=goods_id)
-    
+    Goods.objects.filter(id=goods.id).update(view_count=F('view_count') + 1)
+    goods.refresh_from_db(fields=['view_count'])
+
+    is_wishlisted = False
+    if request.user.is_authenticated:
+        is_wishlisted = Wishlist.objects.filter(user=request.user, goods=goods).exists()
+    wishlist_count = Wishlist.objects.filter(goods=goods).count()
+
     return render(request, 'deal/deal_detail.html', {
-        'goods': goods
+        'goods': goods,
+        'is_wishlisted': is_wishlisted,
+        'wishlist_count': wishlist_count
     })
 
 # 2. 판매글 수정 페이지 뷰 (GET: 수정 폼 띄우기, POST: 수정 내용 DB 반영)
@@ -177,6 +192,10 @@ def deal_chat_start(request, goods_id):
 
     # 본인 상품에 본인이 채팅하는 것 방지
     if buyer == seller:
+        return redirect('deal:deal_detail', goods_id=goods.id)
+
+    # 판매완료된 상품은 채팅 문의 불가
+    if goods.status == 'sold':
         return redirect('deal:deal_detail', goods_id=goods.id)
 
     # 기존에 두 사람 사이에 이 상품으로 개설된 방이 있는지 조회, 없으면 생성
@@ -270,5 +289,28 @@ def change_goods_status_ajax(request, goods_id):
         goods.status = status
         goods.save()
         return JsonResponse({'status': 'success', 'current_status': status})
-        
+
     return JsonResponse({'status': 'error', 'message': '잘못된 상태 값입니다.'}, status=400)
+
+@login_required
+@require_POST
+def toggle_wishlist(request, goods_id):
+    goods = get_object_or_404(Goods, id=goods_id)
+
+    wishlist_item = Wishlist.objects.filter(user=request.user, goods=goods).first()
+    if wishlist_item:
+        wishlist_item.delete()
+        wishlisted = False
+    else:
+        Wishlist.objects.create(user=request.user, goods=goods)
+        wishlisted = True
+
+    wishlist_count = Wishlist.objects.filter(goods=goods).count()
+    return JsonResponse({'status': 'success', 'wishlisted': wishlisted, 'wishlist_count': wishlist_count})
+
+@login_required(login_url='accounts:login')
+def deal_wishlist(request):
+    wishlist_items = Wishlist.objects.filter(user=request.user).select_related('goods')
+    return render(request, 'deal/deal_wishlist.html', {
+        'wishlist_items': wishlist_items
+    })

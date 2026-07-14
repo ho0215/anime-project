@@ -23,8 +23,22 @@
         </div>
 
         <div class="space-y-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">나의 활동</h3>
+
+            <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                <div>
+                    <p class="font-medium text-gray-800 dark:text-gray-200">찜한 상품</p>
+                    <p class="text-xs text-gray-500 mt-0.5">장터에서 찜한 굿즈를 모아볼 수 있어요.</p>
+                </div>
+                <a href="{% url 'deal:deal_wishlist' %}" class="px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    찜 목록 보기
+                </a>
+            </div>
+        </div>
+
+        <div class="space-y-4">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">계정 설정</h3>
-            
+
             <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
                 <div>
                     <p class="font-medium text-gray-800 dark:text-gray-200">비밀번호 변경</p>
