@@ -1,8 +1,10 @@
+from django.db import models
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect
 from django.urls import reverse
-from .models import CreativeWork
+from .models import CreativeWork, WorkImage
+from django.core.exceptions import PermissionDenied
 
 # 1. 메인 갤러리 / 게시판 목록 (필터 및 정렬 기능 고도화)
 def work_list(request):
@@ -78,6 +80,10 @@ def work_create(request):
             image=image,
             author=request.user
         )
+        extra_images = request.FILES.getlist('extra_images')
+        for img in extra_images:
+            WorkImage.objects.create(work=work, image=img)
+            
         return redirect('works:work_detail', pk=work.pk)
 
     return render(request, 'works/work_form.html')
@@ -101,3 +107,45 @@ def work_bookmark(request, pk):
     else:
         work.bookmarks.add(request.user)
     return HttpResponseRedirect(reverse('works:work_detail', args=[pk]))
+
+# 6. [기능] 게시글 수정 (작성자 본인만 가능)
+@login_required
+def work_update(request, pk):
+    work = get_object_or_404(CreativeWork, pk=pk)
+
+    if request.user != work.author:
+        raise PermissionDenied("본인이 작성한 글만 수정할 수 있습니다.")
+
+    if request.method == 'POST':
+        work.target_program = request.POST.get('target_program')
+        work.category = request.POST.get('category')
+        work.title = request.POST.get('title')
+        work.content = request.POST.get('content')
+
+        image = request.FILES.get('image')
+        if image:
+            work.image = image
+        work.save()
+
+        extra_images = request.FILES.getlist('extra_images')
+        for img in extra_images:
+            WorkImage.objects.create(work=work, image=img)
+
+        return redirect('works:work_detail', pk=work.pk)
+
+    return render(request, 'works/work_form.html', {'work': work})
+
+
+# 7. [기능] 게시글 삭제 (작성자 본인만 가능, 삭제 전 확인 페이지 표시)
+@login_required
+def work_delete(request, pk):
+    work = get_object_or_404(CreativeWork, pk=pk)
+
+    if request.user != work.author:
+        raise PermissionDenied("본인이 작성한 글만 삭제할 수 있습니다.")
+
+    if request.method == 'POST':
+        work.delete()
+        return redirect('works:work_list')
+
+    return render(request, 'works/work_confirm_delete.html', {'work': work})

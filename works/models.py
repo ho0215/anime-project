@@ -35,3 +35,16 @@ class CreativeWork(models.Model):
     @property
     def content_length(self):
         return len(self.content)
+    
+class WorkImage(models.Model):
+    work = models.ForeignKey(
+        CreativeWork,
+        on_delete=models.CASCADE,
+        related_name='extra_images',
+        verbose_name="소속 창작물"
+    )
+    image = models.ImageField(upload_to='works_images/', verbose_name="추가 이미지")
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="업로드일")
+
+    def __str__(self):
+        return f"{self.work.title} - 이미지 {self.id}"

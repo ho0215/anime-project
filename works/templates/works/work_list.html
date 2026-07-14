@@ -6,8 +6,8 @@
     <!-- 상단 헤더 및 검색바 -->
     <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b pb-6 border-gray-200">
         <div>
-            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">2차 창작 허브</h1>
-            <p class="text-gray-500 mt-2">최애 작품의 코스프레, 일러스트, 소설을 만나보세요.</p>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">너의 しせん 나의 かんどう</h1>
+            <p class="text-gray-500 mt-2">최애 작품의 코스프레, 일러스트, 소설 함께 즐겨요.</p>
         </div>
         
         <!-- 원작 작품명 검색창 -->
@@ -27,11 +27,11 @@
             <a href="?category=all&sort={{ current_sort }}&search={{ search_query }}" 
                class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'all' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">전체</a>
             <a href="?category=cosplay&sort={{ current_sort }}&search={{ search_query }}" 
-               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'cosplay' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">📸 코스프레</a>
+               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'cosplay' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">코스프레</a>
             <a href="?category=illustration&sort={{ current_sort }}&search={{ search_query }}" 
-               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'illustration' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">🎨 일러스트</a>
+               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'illustration' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">일러스트</a>
             <a href="?category=novel&sort={{ current_sort }}&search={{ search_query }}" 
-               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'novel' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">✍️ 소설</a>
+               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'novel' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">소설</a>
         </div>
 
         <!-- 정렬 필터 및 창작물 등록 버튼 -->
@@ -44,7 +44,7 @@
                 <a href="?category={{ current_category }}&sort=likes&search={{ search_query }}" class="{% if current_sort == 'likes' %}font-bold text-indigo-600{% endif %}">추천순</a>
             </div>
             <a href="{% url 'works:work_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition">
-                작품 투고하기
+                작품 공유하기
             </a>
         </div>
     </div>
