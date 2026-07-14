@@ -13,4 +13,6 @@ urlpatterns = [
     
     # 3. 글 상세보기 화면 (pk 번호 기반)
     path('<int:pk>/', views.post_detail, name='post_detail'),
+    
+    path('<int:pk>/like/', views.post_like, name='post_like'),
 ]

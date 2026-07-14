@@ -31,9 +31,9 @@
                 <span>{{ post.created_at|date:"Y-m-d H:i" }}</span>
             </div>
             
-            <!-- 조회수 등이 있다면 표기 -->
+            <!-- [수정] views -> view_count 모델 필드에 맞춰 연동 -->
             <div class="flex items-center gap-2">
-                <span>조회수 {{ post.views|default:0 }}</span>
+                <span>조회수 {{ post.view_count|default:0 }}</span>
             </div>
         </div>
     </div>
@@ -58,9 +58,31 @@
         </div>
     </div>
 
+    <!-- [추가] 추천하기(좋아요) 버튼 영역 -->
+    <div class="flex justify-center my-10">
+        <form action="{% url 'community:post_like' post.pk %}" method="POST" class="inline-block">
+            {% csrf_token %}
+            {% if request.user in post.likes.all %}
+                <!-- 이미 추천을 누른 경우: 보라색 배경 단추 -->
+                <button type="submit" class="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-full font-semibold shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5">
+                    <span>❤️</span>
+                    <span>좋아요 취소</span>
+                    <span class="bg-purple-800 text-purple-100 px-2.5 py-0.5 rounded-full text-sm">{{ post.total_likes }}</span>
+                </button>
+            {% else %}
+                <!-- 아직 추천하지 않은 경우: 테두리만 있는 단추 -->
+                <button type="submit" class="flex items-center gap-2 px-6 py-3 border-2 border-purple-600 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded-full font-semibold transition transform hover:-translate-y-0.5">
+                    <span>❤️</span>
+                    <span>좋아요 누르기</span>
+                    <span class="bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 px-2.5 py-0.5 rounded-full text-sm">{{ post.total_likes }}</span>
+                </button>
+            {% endif %}
+        </form>
+    </div>
+
     <!-- 하단 메뉴 버튼 영역 (목록으로, 수정, 삭제) -->
     <div class="flex justify-between items-center pt-6 pb-12">
-        <a href="{% url 'community:board_list' %}" class="px-5 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+        <a href="{% url 'community:board_list' %}?board_type={{ request.GET.board_type|default:'all' }}&per_page={{ request.GET.per_page|default:'15' }}&page={{ request.GET.page|default:'1' }}" class="px-5 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition">
             목록으로
         </a>
         
