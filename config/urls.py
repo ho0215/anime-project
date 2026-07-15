@@ -10,6 +10,7 @@ urlpatterns = [
     path('', include('anime.urls')), 
     path('deal/', include('deal.urls')),
     path('accounts/', include('accounts.urls')),
+    path('works/', include('works.urls')),
     path('community/', include('community.urls')),
 ]
 
