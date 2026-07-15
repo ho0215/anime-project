@@ -18,7 +18,7 @@
                 <div class="flex items-center gap-6">
                     <a href="/" class="text-2xl font-black text-violet-600 dark:text-indigo-400 tracking-tight">ANIVERSE</a>
                     <div class="hidden md:flex space-x-4">
-                        <a href="/" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">일러스트</a>
+                        <a href="{% url 'works:work_list' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">창작마당</a>
                         <a href="{% url 'anime:anime_list' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">애니메이션</a>
                         <a href="{% url 'deal:deal_board' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">거래 / 장터</a>
                     </div>
@@ -36,7 +36,6 @@
                             {% csrf_token %}
                             <button type="submit" class="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition bg-transparent border-none cursor-pointer focus:outline-none">로그아웃</button>
                         </form>
-                        <button class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-xl shadow-sm transition">작품 올리기</button>
                     {% else %}
                         <a href="{% url 'accounts:login' %}" class="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white transition">로그인</a>
                         <a href="{% url 'accounts:signup' %}" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition">회원가입</a>
