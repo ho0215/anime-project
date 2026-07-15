@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="max-w-2xl mx-auto px-4 py-6">
+    <div class="flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 shadow-sm mb-4">
+        <div class="w-12 h-12 rounded-lg bg-gray-50 dark:bg-gray-900 overflow-hidden border flex-shrink-0">
+            {% if room.goods.image %}
+                <img src="{{ room.goods.image.url }}" class="w-full h-full object-cover">
+            {% else %}
+                <div class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">[NO IMG]</div>
+            {% endif %}
+        </div>
+        <div class="flex-1 min-w-0">
+            <h4 class="text-sm font-bold text-gray-900 dark:text-white truncate">{{ room.goods.title }}</h4>
+            <p class="text-xs text-violet-600 dark:text-indigo-400 font-extrabold mt-0.5">{{ room.goods.price }}원</p>
+        </div>
+        {% if request.user == room.goods.seller %}
+            <div class="flex items-center gap-1.5 bg-white dark:bg-gray-800 p-1 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm">
+                <select id="status-select" onchange="updateGoodsStatus({{ room.goods.id }})" 
+                        class="text-xs font-bold bg-transparent border-none text-gray-700 dark:text-gray-200 focus:outline-none cursor-pointer">
+                    <option value="sale" {% if room.goods.status == 'sale' %}selected{% endif %}>⚪ 판매중</option>
+                    <option value="reserved" {% if room.goods.status == 'reserved' %}selected{% endif %}>🟣 예약중</option>
+                    <option value="sold" {% if room.goods.status == 'sold' %}selected{% endif %}>⚫ 판매완료</option>
+                </select>
+            </div>
+
+            <script>
+            function updateGoodsStatus(goodsId) {
+                const select = document.getElementById('status-select');
+                const status = select.value;
+                
+                const formData = new FormData();
+                formData.append('status', status);
+                
+                fetch(`/deal/goods/${goodsId}/status-ajax/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // 부드러운 UI 시각 알림 효과 추가
+                        select.classList.add('text-violet-600', 'scale-105');
+                        setTimeout(() => select.classList.remove('text-violet-600', 'scale-105'), 500);
+                    } else {
+                        alert(data.message);
+                    }
+                }).catch(err => console.error("상태 업데이트 실패:", err));
+            }
+            </script>
+        {% endif %}
+        <a href="{% url 'deal:deal_detail' room.goods.id %}" class="text-xs bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 font-bold px-3 py-2 rounded-lg border dark:border-gray-600 transition">
+            상품보기
+        </a>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden flex flex-col" style="height: 550px;">
+        
+        <div class="px-5 py-3.5 border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20 flex justify-between items-center">
+            <a href="{% url 'deal:deal_chat_list' %}" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition" title="채팅 목록으로 이동">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+            </a>
+            <span class="text-sm font-black text-gray-800 dark:text-gray-200">
+                {% if request.user == room.buyer %}
+                    {{ room.seller.username }} (판매자)
+                {% else %}
+                    {{ room.buyer.username }} (구매자)
+                {% endif %}님과의 대화
+            </span>
+            
+            <a href="{% url 'deal:deal_chat_leave' room.id %}" 
+            onclick="return confirm('채팅방을 나가시겠습니까?\n나간 방의 대화 내역은 모두 삭제됩니다.');"
+            class="text-xs font-bold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition">
+                방 나가기
+            </a>
+        </div>
+
+        <div id="chat-log" class="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50/30 dark:bg-gray-900/10">
+            <div class="bg-gray-100/70 dark:bg-gray-800/60 rounded-xl p-3.5 text-center space-y-1 border border-gray-200/50 dark:border-gray-700/50 max-w-md mx-auto mb-6">
+                <div class="text-[11px] font-bold text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
+                    ⚠️ 안심 거래 안내
+                </div>
+                <p class="text-[10px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                    물품을 받기 전 <span class="text-red-400 font-medium">선입금 요청</span> 시 사기 피해 우려가 있으니 각별히 주의해 주세요.<br>
+                    카카오톡, 라인 등 <span class="text-red-400 font-medium">외부 메신저로 유도</span>하는 경우 외부 소통에 주의하시기 바랍니다.
+                </p>
+            </div>
+            {% for msg in chat_messages %}
+                {% if msg.sender == request.user %}
+                    <div class="flex justify-end items-end gap-1.5 w-full">
+                        <span class="text-[10px] text-gray-400 min-w-fit mb-0.5">{{ msg.timestamp|date:"A g:i" }}</span>
+                        <div class="max-w-[70%] bg-violet-600 text-white rounded-2xl rounded-tr-none px-4 py-2 text-sm font-medium shadow-sm">
+                            {{ msg.content }}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="flex flex-col items-start space-y-1 w-full">
+                        <span class="text-[11px] text-gray-400 font-bold pl-1">{{ msg.sender.username }}</span>
+                        <div class="flex items-end gap-1.5 w-full">
+                            <div class="max-w-[70%] bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-600 rounded-2xl rounded-tl-none px-4 py-2 text-sm font-medium shadow-sm">
+                                {{ msg.content }}
+                            </div>
+                            <span class="text-[10px] text-gray-400 min-w-fit mb-0.5">{{ msg.timestamp|date:"A g:i" }}</span>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <div class="p-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <div class="flex gap-2 overflow-x-auto pb-2.5 mb-1.5 no-scrollbar text-xs">
+                {% if request.user == room.buyer %}
+                    <button type="button" onclick="insertQuickMsg('안녕하세요! 혹시 구매 가능할까요?')" class="flex-shrink-0 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full font-medium transition">👋 구매 가능?</button>
+                    <button type="button" onclick="insertQuickMsg('배송비가 포함된 가격인가요?')" class="flex-shrink-0 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full font-medium transition">📦 배송비 포함?</button>
+                    <button type="button" onclick="insertQuickMsg('안전하게 입금해 드리겠습니다. 계좌번호 부탁드립니다!')" class="flex-shrink-0 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full font-medium transition">💳 계좌 요청</button>
+                {% else %}
+                    <button type="button" onclick="insertQuickMsg('네, 아직 구매 가능합니다!')" class="flex-shrink-0 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full font-medium transition">👌 구매 가능</button>
+                    <button type="button" onclick="insertQuickMsg('입금 확인 확인 시 최대한 빠르게 포장해서 발송해 드릴게요.')" class="flex-shrink-0 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full font-medium transition">🚚 입금 확인 후 발송</button>
+                    <button type="button" onclick="insertQuickMsg('방금 물품 발송 완료했습니다! 운송장 번호 전달해 드립니다.')" class="flex-shrink-0 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full font-medium transition">🎫 운송장 전달</button>
+                {% endif %}
+            </div>
+            
+            <form id="chat-form" class="flex gap-2 items-center m-0 p-0">
+                <input type="text" id="chat-message-input" placeholder="메시지를 입력하세요..." autocomplete="off"
+                    class="flex-1 px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
+                
+                <button id="chat-message-submit" type="submit" class="bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition shadow-sm whitespace-nowrap">
+                    전송
+                </button>
+            </form>
+        </div>
+    </div>
+</main>
+
+<script>
+    const roomId = "{{ room.id }}";
+    // 1. 이미 선언해두신 안전한 숫자형 내 유저 ID 상수 사용
+    const currentUserId = parseInt("{{ request.user.id }}");
+    
+    const wsScheme = window.location.protocol === "https:" ? "wss://" : "ws://";
+    const chatSocket = new WebSocket(
+        wsScheme + window.location.host + '/ws/deal/chat/' + roomId + '/'
+    );
+
+    const chatLog = document.querySelector('#chat-log');
+    chatLog.scrollTop = chatLog.scrollHeight;
+
+    chatSocket.onopen = function(e) {
+        console.log("웹소켓 서버와 성공적으로 연결되었습니다.");
+    };
+
+    // 실시간 메시지 수신 및 분기 처리 구역
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const message = data.message;
+
+        // 서버(consumers.py)가 보내주는 실제 필드명: sender_id, sender_username
+        const senderId = parseInt(data.sender_id);
+        const isMe = senderId === currentUserId;
+        const senderUsername = data.sender_username || (isMe ? "나" : "상대방");
+
+        // 현재 시각 기반 오전/오후 g:i 포맷 생성
+        const now = new Date();
+        let hours = now.getHours();
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? '오후' : '오전';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        const timeStr = `${ampm} ${hours}:${minutes}`;
+
+        let messageHtml = '';
+
+        // 판별된 결과(isMe)에 따라 정렬 분기
+        if (isMe) {
+            // 내가 보낸 우측 보라색 말풍선 구조
+            messageHtml = `
+                <div class="flex justify-end items-end gap-1.5 w-full">
+                    <span class="text-[10px] text-gray-400 min-w-fit mb-0.5">${timeStr}</span>
+                    <div class="max-w-[70%] bg-violet-600 text-white rounded-2xl rounded-tr-none px-4 py-2 text-sm font-medium shadow-sm">
+                        ${message}
+                    </div>
+                </div>`;
+        } else {
+            // 상대방이 보낸 좌측 흰색 말풍선 구조
+            messageHtml = `
+                <div class="flex flex-col items-start space-y-1 w-full">
+                    <span class="text-[11px] text-gray-400 font-bold pl-1">${senderUsername}</span>
+                    <div class="flex items-end gap-1.5 w-full">
+                        <div class="max-w-[70%] bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-600 rounded-2xl rounded-tl-none px-4 py-2 text-sm font-medium shadow-sm">
+                            ${message}
+                        </div>
+                        <span class="text-[10px] text-gray-400 min-w-fit mb-0.5">${timeStr}</span>
+                    </div>
+                </div>`;
+        }
+
+        const chatLog = document.getElementById('chat-log');
+        chatLog.insertAdjacentHTML('beforeend', messageHtml);
+        chatLog.scrollTop = chatLog.scrollHeight;
+        
+        // 스마트 복사 버튼 재감지 실행
+        if (typeof applySmartCopy === 'function') {
+            applySmartCopy();
+        }
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('채팅 소켓이 비정상적으로 종료되었습니다.');
+    };
+
+    function sendMessage() {
+        const messageInputDom = document.querySelector('#chat-message-input');
+        const message = messageInputDom.value.trim();
+        
+        if(message === "") return;
+
+        // 🛠️ 백엔드가 누가 보냈는지 확실히 알 수 있도록 user 필드에 내 ID를 명시해서 쏩니다.
+        chatSocket.send(JSON.stringify({
+            'message': message,
+            'user': currentUserId
+        }));
+
+        messageInputDom.value = '';
+    }
+
+    // 🛠️ 교정: 단순 입력창 주입을 넘어 즉시 '전송' 트리거까지 이어지도록 개선
+    function insertQuickMsg(text) {
+        const input = document.getElementById('chat-message-input');
+        if (input) {
+            input.value = text;
+            sendMessage(); // 주입 후 즉시 상대방에게 발송처리
+        }
+    }
+
+    // 🛠️ 누락 복구: 계좌/주소 감지 및 원클릭 클업보드 복사 엔진 탑재 완료
+    function applySmartCopy() {
+        const bubbles = document.querySelectorAll('#chat-log div.max-w-\\[70\\%\\]');
+        
+        bubbles.forEach(msg => {
+            if (msg.parentElement.querySelector('.copy-btn')) return;
+
+            const text = msg.textContent.trim();
+            const isAccount = /(?:계좌|은행|국민|신한|우리|하나|농협|\d{4,}-\d{2,}-\d{4,})/i.test(text) && /\d+/.test(text);
+            const isAddress = /(?:서울|경기|인천|대구|부산|시\s|구\s|동\s|로\s|길\s|아파트)/.test(text) && text.length > 5;
+
+            if (isAccount || isAddress) {
+                const btnLabel = isAccount ? '📋 계좌복사' : '📍 주소복사';
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn text-[9px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded transition whitespace-nowrap mb-0.5 mx-1 hover:bg-violet-600 hover:text-white dark:hover:bg-indigo-600';
+                copyBtn.textContent = btnLabel;
+                
+                copyBtn.onclick = function(e) {
+                    e.preventDefault();
+                    navigator.clipboard.writeText(text).then(() => {
+                        copyBtn.textContent = '✅ 복사완료';
+                        copyBtn.classList.add('bg-green-500', 'text-white');
+                        setTimeout(() => {
+                            copyBtn.textContent = btnLabel;
+                            copyBtn.classList.remove('bg-green-500', 'text-white');
+                        }, 1200);
+                    });
+                };
+                msg.parentElement.insertBefore(copyBtn, msg);
+            }
+        });
+    }
+
+    // 엔터 및 전송 버튼 바인딩 구역
+    document.querySelector('#chat-message-input').focus();
+    document.querySelector('#chat-message-input').onkeyup = function(e) {
+        if (e.key === 'Enter') { sendMessage(); }
+    };
+
+    document.querySelector('#chat-message-submit').onclick = function(e) {
+        e.preventDefault();
+        sendMessage();
+    };
+
+    // DOM 로드 완료 시 초기 가동
+    document.addEventListener('DOMContentLoaded', () => {
+        applySmartCopy();
+    });
+</script>
+{% endblock %}
