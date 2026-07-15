@@ -68,7 +68,9 @@
             
             <div class="relative bg-gray-100 dark:bg-gray-900 aspect-square flex items-center justify-center text-gray-400 text-xs">
                 {% if goods.image %}
-                    <img src="{{ goods.image.url }}" alt="{{ goods.title }}" class="w-full h-full object-cover">
+                    <div class="w-full aspect-square overflow-hidden">
+                        <img src="{{ goods.image.url }}" class="w-full h-full object-cover">
+                    </div>
                 {% else %}
                     <span>[이미지 없음]</span>
                 {% endif %}
