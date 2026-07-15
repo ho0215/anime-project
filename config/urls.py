@@ -11,8 +11,8 @@ urlpatterns = [
     path('deal/', include('deal.urls')),
     path('accounts/', include('accounts.urls')),
     path('works/', include('works.urls')),
+    path('community/', include('community.urls')),
 ]
-
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
