@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'accounts',
     'deal.apps.DealConfig',
     'works.apps.WorksConfig',
+    'community.apps.CommunityConfig',
 ]
 
 

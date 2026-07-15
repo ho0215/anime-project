@@ -1,0 +1,66 @@
+{% extends 'home.html' %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto px-4 py-10">
+    <div class="mb-8 border-b border-gray-200 dark:border-gray-700 pb-6">
+        <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">커뮤니티 글쓰기</h2>
+        <p class="text-gray-500 dark:text-gray-400 mt-2">당신의 의견이나 질문을 자유롭게 공유해 주세요.</p>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        
+        <!-- 1. 질문 / 제목 섹션 (찾아보기 파일 업로드를 우측에 배치) -->
+        <div class="p-5 border border-gray-100 dark:border-gray-700 rounded-2xl bg-white dark:bg-gray-800 shadow-sm">
+            <div class="flex flex-col md:flex-row md:items-end gap-4">
+                <!-- 제목 입력창 -->
+                <div class="flex-grow">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">질문 / 제목</label>
+                    <input type="text" name="title" placeholder="제목을 입력하세요" 
+                        class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block dark:bg-gray-700 transition">
+                </div>
+                
+                <!-- 파일 첨부 (찾아보기) - name을 안전하게 'image'와 'file' 둘 다 인식하도록 처리하거나 본인 모델에 맞게 수정 -->
+                <div class="flex-shrink-0 w-full md:w-auto">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">이미지 첨부</label>
+                    <input type="file" name="image" 
+                        class="block w-full text-sm text-gray-500 dark:text-gray-400
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-xs file:font-bold
+                        file:bg-purple-50 file:text-purple-700
+                        dark:file:bg-purple-900/30 dark:file:text-purple-300
+                        hover:file:bg-purple-100 dark:hover:file:bg-purple-900/50
+                        cursor-pointer border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 내용 섹션 (블로그 스타일로 크게 확장) -->
+        <div class="p-5 border border-gray-100 dark:border-gray-700 rounded-2xl bg-white dark:bg-gray-800 shadow-sm">
+            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">내용</label>
+            
+            <!-- 블로그 에디터 툴바 디자인 -->
+            <div class="flex items-center gap-1.5 p-2.5 border border-gray-300 dark:border-gray-600 border-b-0 rounded-t-xl bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 text-xs">
+                <button type="button" class="px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 font-bold">B</button>
+                <button type="button" class="px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 italic">I</button>
+                <button type="button" class="px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 underline">U</button>
+                <span class="text-gray-300 dark:text-gray-600">|</span>
+                <button type="button" class="px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 font-mono">CODE</button>
+            </div>
+            
+            <!-- 본문 입력창 (rows="15"로 크게 키움) -->
+            <textarea name="content" rows="15" placeholder="당신의 이야기를 자유롭게 적어보세요..." 
+                class="w-full px-4 py-3 bg-white border border-gray-300 dark:border-gray-600 border-t-0 rounded-b-xl text-gray-900 dark:text-gray-200 text-sm focus:ring-purple-500 focus:border-purple-500 block dark:bg-gray-700 transition resize-y"></textarea>
+        </div>
+
+        <!-- 3. 하단 등록 버튼 영역 (확실하게 보이도록 패딩 확보 및 최하단 배치) -->
+        <div class="flex justify-end pt-4 pb-12">
+            <button type="submit" class="px-10 py-3.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-md hover:shadow-lg transform hover:-translate-y-0.5 dark:text-white block">
+                등록하기
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
