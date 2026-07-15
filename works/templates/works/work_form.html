@@ -4,7 +4,7 @@
 <div class="max-w-2xl mx-auto px-4 py-12">
     <div class="bg-white border border-gray-200 p-8 rounded-2xl shadow-sm">
         <h2 class="text-2xl font-bold text-gray-900 mb-2">
-            {% if work %}창작물 수정하기{% else %}새로운 창작물 투고{% endif %}
+            {% if work %}창작물 수정하기{% else %}새로운 창작물 올리기{% endif %}
         </h2>
         <p class="text-gray-500 text-sm mb-6">자신의 코스프레 사진, 일러스트, 혹은 멋진 소설을 동료들과 공유하세요.</p>
         
@@ -40,7 +40,7 @@
             </div>
 
             <!-- 파일 업로드 (코스프레/일러스트는 필수 권장, 소설은 생략 가능) -->
-            <div>
+            <div id="image-upload-section">
                 <label class="block text-sm font-semibold text-gray-700 mb-2">이미지 파일 첨부</label>
 
                 {% if work and work.image %}
@@ -78,4 +78,25 @@
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const categorySelect = document.querySelector('select[name="category"]');
+    const imageSection = document.getElementById('image-upload-section');
+
+    function toggleImageSection() {
+        if (categorySelect.value === 'novel') {
+            imageSection.style.display = 'none';
+            imageSection.querySelectorAll('input[type="file"]').forEach(function (el) {
+                el.value = '';
+            });
+        } else {
+            imageSection.style.display = '';
+        }
+    }
+
+    categorySelect.addEventListener('change', toggleImageSection);
+    toggleImageSection();
+});
+</script>
 {% endblock %}
