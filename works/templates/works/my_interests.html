@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-12">
+    <h2 class="text-2xl font-bold text-gray-900 mb-6">관심목록</h2>
+    {% if interests %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {% for work in interests %}
+                <a href="{% url 'works:work_detail' work.pk %}"
+                   class="block bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-400 transition">
+                    <p class="text-sm font-semibold text-gray-800 mb-1">{{ work.title }}</p>
+                    <p class="text-xs text-gray-400">{{ work.author.username }}</p>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-sm text-gray-400 text-center py-10">관심목록에 담긴 글이 없어요.</p>
+    {% endif %}
+</div>
+{% endblock %}

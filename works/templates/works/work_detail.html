@@ -77,6 +77,13 @@
 
                 <!-- 작성자 본인에게만 보이는 수정/삭제 버튼 -->
     {% if request.user == work.author %}
+    <form method="POST" action="{% url 'works:work_toggle_visibility' work.pk %}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-gray-300 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-100 transition">
+                {% if work.is_public %}🙈 나만 보기로 전환{% else %}🌍 공개로 전환{% endif %}
+            </button>
+        </form>
         <a href="{% url 'works:work_update' work.pk %}"
            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-gray-300 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-100 transition">
             ✏️ 수정하기

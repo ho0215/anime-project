@@ -11,12 +11,12 @@ def work_list(request):
     category = request.GET.get('category', 'all')
     sort = request.GET.get('sort', 'latest') # latest: 최신순, popular: 조회수순, likes: 추천순
     search_query = request.GET.get('search', '') # 원작명 검색용
+    
+    works = CreativeWork.objects.filter(status='published', is_public=True)
 
     # 1차 필터링: 카테고리
     if category != 'all':
-        works = CreativeWork.objects.filter(category=category)
-    else:
-        works = CreativeWork.objects.all()
+        works = works.filter(category=category)
 
     # 2차 필터링: 원작 작품명 검색
     if search_query:
@@ -54,11 +54,13 @@ def work_detail(request, pk):
             is_liked = True
         if work.bookmarks.filter(id=request.user.id).exists():
             is_bookmarked = True
-
+            
+    is_author = request.user.is_authenticated and request.user == work.author
     context = {
         'work': work,
         'is_liked': is_liked,
         'is_bookmarked': is_bookmarked,
+        'is_author': is_author,
     }
     return render(request, 'works/work_detail.html', context)
 
@@ -66,6 +68,7 @@ def work_detail(request, pk):
 @login_required
 def work_create(request):
     if request.method == 'POST':
+        action = request.POST.get('action', 'publish')
         target_program = request.POST.get('target_program')
         category = request.POST.get('category')
         title = request.POST.get('title')
@@ -78,7 +81,8 @@ def work_create(request):
             title=title,
             content=content,
             image=image,
-            author=request.user
+            author=request.user,
+            status='draft' if action == 'draft' else 'published',
         )
         extra_images = request.FILES.getlist('extra_images')
         for img in extra_images:
@@ -117,10 +121,12 @@ def work_update(request, pk):
         raise PermissionDenied("본인이 작성한 글만 수정할 수 있습니다.")
 
     if request.method == 'POST':
+        action = request.POST.get('action', 'publish')
         work.target_program = request.POST.get('target_program')
         work.category = request.POST.get('category')
         work.title = request.POST.get('title')
         work.content = request.POST.get('content')
+        work.status = 'draft' if action == 'draft' else 'published'
 
         image = request.FILES.get('image')
         if image:
@@ -149,3 +155,36 @@ def work_delete(request, pk):
         return redirect('works:work_list')
 
     return render(request, 'works/work_confirm_delete.html', {'work': work})
+
+# 8. [기능] 임시저장 목록 (나의 활동 - 임시저장)
+@login_required
+def my_drafts(request):
+    drafts = CreativeWork.objects.filter(author=request.user, status='draft').order_by('-updated_at')
+    return render(request, 'works/my_drafts.html', {'drafts': drafts})
+
+
+# 9. [기능] 내 게시글 보관함 (게시했다가 나만 보기로 전환한 글)
+@login_required
+def my_archive(request):
+    archived = CreativeWork.objects.filter(author=request.user, status='published', is_public=False).order_by('-updated_at')
+    return render(request, 'works/my_archive.html', {'archived': archived})
+
+
+# 10. [기능] 관심목록 (내가 북마크한 다른 회원의 글)
+@login_required
+def my_interests(request):
+    interests = request.user.bookmarked_works.all().order_by('-created_at')
+    return render(request, 'works/my_interests.html', {'interests': interests})
+
+
+# 11. [기능] 공개 / 나만보기 전환 (작성자 본인만 가능)
+@login_required
+def work_toggle_visibility(request, pk):
+    work = get_object_or_404(CreativeWork, pk=pk)
+
+    if request.user != work.author:
+        raise PermissionDenied("본인이 작성한 글만 전환할 수 있습니다.")
+
+    work.is_public = not work.is_public
+    work.save(update_fields=['is_public'])
+    return redirect('works:work_detail', pk=work.pk)

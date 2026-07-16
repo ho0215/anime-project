@@ -11,4 +11,8 @@ urlpatterns = [
     path('<int:pk>/delete/', views.work_delete, name='work_delete'),
     path('<int:pk>/like/', views.work_like, name='work_like'),
     path('<int:pk>/bookmark/', views.work_bookmark, name='work_bookmark'),
+    path('my/drafts/', views.my_drafts, name='my_drafts'),
+    path('my/archive/', views.my_archive, name='my_archive'),
+    path('my/interests/', views.my_interests, name='my_interests'),
+    path('<int:pk>/toggle-visibility/', views.work_toggle_visibility, name='work_toggle_visibility'),
 ]

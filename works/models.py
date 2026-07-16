@@ -7,6 +7,11 @@ class CreativeWork(models.Model):
         ('illustration', '일러스트'),
         ('novel', '소설'),
     ]
+    
+    STATUS_CHOICES = [
+        ('draft', '임시저장'),
+        ('published', '게시됨'),
+    ]
 
     # 어떤 원작(애니메이션/게임) 기반의 2차 창작인지 기록 (예: 귀멸의 칼날, 리그오브레전드 등)
     target_program = models.CharField(max_length=100, verbose_name="원작 작품명", help_text="예: 귀멸의 칼날, 롤 등")
@@ -19,6 +24,8 @@ class CreativeWork(models.Model):
     image = models.ImageField(upload_to='works_images/', null=True, blank=True, verbose_name="창작물 이미지")
     
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='creative_works', verbose_name="크리에이터")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='published', verbose_name="상태")
+    is_public = models.BooleanField(default=True, verbose_name="공개 여부")
     
     # 통계 및 상호작용 기능 (댓글 대체용 기능들)
     views = models.PositiveIntegerField(default=0, verbose_name="조회수")
