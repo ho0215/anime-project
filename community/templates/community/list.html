@@ -3,33 +3,82 @@
 
 <div class="max-w-5xl mx-auto px-4 py-10">
 
+    <!-- 대제목 '커뮤니티'에 전체 목록 링크 연동 -->
     <div class="mb-8 border-b border-gray-200 dark:border-gray-700 pb-6">
-        <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">커뮤니티</h2>
+        <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+            <a href="{% url 'community:board_list' %}" class="hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-150">커뮤니티</a>
+        </h2>
         <p class="text-gray-500 dark:text-gray-400 mt-2">자유롭게 소통하고 정보를 나누는 공간입니다.</p>
     </div>
 
-    <div class="flex items-center justify-between mb-6">
-        <select onchange="location.href='?board_type='+this.value"
-            class="bg-gray-50 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2.5 dark:bg-gray-800 transition">
-            <option value="all" {% if current_type == 'all' %}selected{% endif %}>전체 게시판</option>
-            <option value="question" {% if current_type == 'question' %}selected{% endif %}>질문 답변</option>
-            <option value="free" {% if current_type == 'free' %}selected{% endif %}>자유 게시판</option>
-            <option value="share" {% if current_type == 'share' %}selected{% endif %}>정보 공유</option>
-        </select>
+    <!-- 💡 [통합 폼 적용] 카테고리 필터와 검색창을 하나의 GET Form으로 묶어 동시 검색/필터링 구현 -->
+    <form action="" method="GET" class="w-full">
+        <!-- per_page(개수 보기) 값이 있다면 폼 전송 시 함께 유지되도록 hidden input 처리 -->
+        <input type="hidden" name="per_page" value="{{ per_page }}">
 
-        {% if user.is_authenticated %}
-            <!-- 💜 수정된 보라색 알약 모양 글쓰기 버튼 (글자색 흰색 고정) -->
-            <a href="{% url 'post_create' %}" class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-purple-600 rounded-full shadow-md hover:bg-purple-700 hover:shadow-lg transition-all transform hover:-translate-y-0.5 dark:text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
-                <span>글쓰기</span>
-            </a>
-        {% else %}
-            <a href="{% url 'accounts:login' %}" class="text-sm text-gray-500 hover:text-purple-600 font-medium transition">로그인 후 글쓰기</a>
-        {% endif %}
-    </div>
+        <!-- 상단 컨트롤러 (카테고리 필터 & 통합 검색창 & 드롭다운 & 글쓰기 버튼) -->
+        <div class="flex items-center justify-between mb-6 gap-4">
+            
+            <!-- 왼쪽: 카테고리 셀렉트박스 (★ onclick 대신 복합적인 이벤트 처리를 위해 스크립트 수정) -->
+            <select name="board_type" id="board-type-select" onchange="handleBoardTypeChange(this)"
+                class="bg-gray-50 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2.5 dark:bg-gray-800 transition shrink-0 cursor-pointer">
+                <option value="all" {% if current_type == 'all' %}selected{% endif %}>전체 게시판</option>
+                <option value="notice" {% if current_type == 'notice' %}selected{% endif %}>공지 사항</option>
+                <option value="qna" {% if current_type == 'qna' %}selected{% endif %}>질문 답변</option>
+                <option value="free" {% if current_type == 'free' %}selected{% endif %}>자유 게시판</option>
+                <option value="info" {% if current_type == 'info' %}selected{% endif %}>정보 공유</option>
+            </select>
 
+            <!-- 중앙 통합 검색창 -->
+            <div class="flex-1 max-w-md mx-2">
+                <div class="relative">
+                    <!-- ★ id="search-input" 속성을 추가하여 스크립트에서 쉽게 제어할 수 있도록 함 -->
+                    <input type="text" id="search-input" name="q" value="{{ search_query }}" placeholder="제목, 내용, 작성자 검색..." 
+                           class="w-full pl-4 pr-16 py-2.5 bg-gray-50 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 transition outline-none">
+                    
+                    <!-- 검색어가 존재할 때만 노출되는 우측 X (초기화) 버튼 -->
+                    {% if search_query %}
+                        <a href="?board_type={{ current_type }}&per_page={{ per_page }}" 
+                           class="absolute right-10 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
+                           title="검색 초기화">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </a>
+                    {% endif %}
+                    
+                    <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-600 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 오른쪽: 줄 수 조절 드롭다운 + 글쓰기 버튼 -->
+            <div class="flex items-center gap-3 shrink-0">
+                <select id="perPageSelect" onchange="changePerPage(this.value)"
+                    class="bg-gray-50 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-full focus:ring-purple-500 focus:border-purple-500 block px-4 py-2.5 dark:bg-gray-800 transition cursor-pointer">
+                    <option value="15" {% if per_page == 15 %}selected{% endif %}>15개씩 보기</option>
+                    <option value="30" {% if per_page == 30 %}selected{% endif %}>30개씩 보기</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50개씩 보기</option>
+                </select>
+
+                {% if user.is_authenticated %}
+                    <a href="{% url 'community:post_create' %}" class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-purple-600 rounded-full shadow-md hover:bg-purple-700 hover:shadow-lg transition-all transform hover:-translate-y-0.5 dark:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                        </svg>
+                        <span>글쓰기</span>
+                    </a>
+                {% else %}
+                    <a href="{% url 'accounts:login' %}" class="text-sm text-gray-500 hover:text-purple-600 font-medium transition">로그인 후 글쓰기</a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+
+    <!-- 게시판 테이블 -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
         <table class="w-full text-sm">
             <thead class="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
@@ -39,37 +88,160 @@
                     <th class="px-6 py-4 text-center font-semibold text-gray-600 dark:text-gray-300">작성자</th>
                     <th class="px-6 py-4 text-center font-semibold text-gray-600 dark:text-gray-300">등록일</th>
                     <th class="px-6 py-4 text-center font-semibold text-gray-600 dark:text-gray-300">조회</th>
+                    <th class="px-6 py-4 text-center font-semibold text-gray-600 dark:text-gray-300">좋아요</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                 {% for post in posts %}
                 <tr class="hover:bg-purple-50/30 dark:hover:bg-purple-900/10 transition-colors duration-150">
                     <td class="px-6 py-4">
-                        {% if post.board_type == 'notice' %}<span class="text-xs font-bold text-gray-800 dark:text-gray-200">공지</span>
-                        {% elif post.board_type == 'question' %}<span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">질문</span>
-                        {% elif post.board_type == 'share' %}<span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">공유</span>
-                        {% else %}<span class="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded-full">자유</span>
+                        {% if post.board_type == 'notice' %}
+                            <span class="text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">공지</span>
+                        {% elif post.board_type == 'qna' %}
+                            <span class="text-xs font-semibold text-green-600 bg-green-50 px-2.5 py-1 rounded-full">질문</span>
+                        {% elif post.board_type == 'info' %}
+                            <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">공유</span>
+                        {% else %}
+                            <span class="text-xs font-semibold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full">자유</span>
                         {% endif %}
                     </td>
                     <td class="px-6 py-4">
-                        <a href="{% url 'post_detail' post.pk %}" class="text-gray-900 dark:text-white font-medium hover:text-purple-600 transition">
+                        <a href="{% url 'community:post_detail' post.pk %}?board_type={{ current_type }}&per_page={{ per_page }}&page={{ posts.number }}&q={{ search_query|urlencode }}" class="text-gray-900 dark:text-white font-medium hover:text-purple-600 transition">
                             {{ post.title }}
+                            {% if post.comment_count > 0 %}
+                                <span class="text-xs font-bold text-purple-600 dark:text-purple-400 ml-1" title="댓글 개수">[{{ post.comment_count }}]</span>
+                            {% endif %}
                         </a>
                         {% if post.image %} <span class="text-xs ml-1">📷</span> {% endif %}
+
+                        <!-- ⭐️ N 뱃지 (찐 깜빡이) -->
+                        {% if post.is_new %}
+                            <span class="inline-flex items-center justify-center ml-1
+                                         w-[14px] h-[14px]
+                                         text-[8px] font-extrabold text-white
+                                         bg-red-500 rounded-[4px]
+                                         select-none -translate-y-[1px]
+                                         badge-blink"
+                                  style="line-height:1"
+                                  title="새로운 글">
+                                N
+                            </span>
+                        {% endif %}
                     </td>
                     <td class="px-6 py-4 text-center text-gray-500">{{ post.author.username }}</td>
                     <td class="px-6 py-4 text-center text-gray-400">{{ post.created_at|date:"m.d" }}</td>
                     <td class="px-6 py-4 text-center text-gray-400">{{ post.view_count }}</td>
+                    <td class="px-6 py-4 text-center text-gray-400">{{ post.like_count|default:0 }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="px-6 py-16 text-center text-gray-400">게시글이 없습니다. 첫 글을 작성해 보세요!</td>
+                    <td colspan="6" class="px-6 py-16 text-center text-gray-400">게시글이 없습니다. 첫 글을 작성해 보세요!</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
+    <!-- 하단 페이징 영역 -->
+    <div class="flex justify-center items-center gap-1.5 my-10">
+        
+        {% if posts.has_previous %}
+            <a href="?board_type={{ current_type }}&per_page={{ per_page }}&page=1&q={{ search_query|urlencode }}" 
+               class="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-purple-50 dark:hover:bg-purple-950/20 hover:text-purple-600 dark:hover:text-purple-400 transition" 
+               title="처음 페이지">
+                &laquo;
+            </a>
+            <a href="?board_type={{ current_type }}&per_page={{ per_page }}&page={{ posts.previous_page_number }}&q={{ search_query|urlencode }}" 
+               class="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-purple-50 dark:hover:bg-purple-950/20 hover:text-purple-600 dark:hover:text-purple-400 transition" 
+               title="이전 페이지">
+                &lt;
+            </a>
+        {% endif %}
+
+        {% for num in posts.paginator.page_range %}
+            {% if posts.number == num %}
+                <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-purple-600 text-white font-bold shadow-sm">
+                    {{ num }}
+                </span>
+            {% else %}
+                <a href="?board_type={{ current_type }}&per_page={{ per_page }}&page={{ num }}&q={{ search_query|urlencode }}" 
+                   class="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-950/20 hover:text-purple-600 dark:hover:text-purple-400 transition font-medium">
+                    {{ num }}
+                </a>
+            {% endif %}
+        {% endfor %}
+
+        {% if posts.has_next %}
+            <a href="?board_type={{ current_type }}&per_page={{ per_page }}&page={{ posts.next_page_number }}&q={{ search_query|urlencode }}" 
+               class="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-purple-50 dark:hover:bg-purple-950/20 hover:text-purple-600 dark:hover:text-purple-400 transition" 
+               title="다음 페이지">
+                &gt;
+            </a>
+            <a href="?board_type={{ current_type }}&per_page={{ per_page }}&page={{ posts.paginator.num_pages }}&q={{ search_query|urlencode }}" 
+               class="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-purple-50 dark:hover:bg-purple-950/20 hover:text-purple-600 dark:hover:text-purple-400 transition" 
+               title="마지막 페이지">
+                &raquo;
+            </a>
+        {% endif %}
+        
+    </div>
 </div>
+
+<!-- ✅ 깜빡이 스타일 -->
+<style>
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.badge-blink {
+    animation: blink 1s step-start infinite;
+}
+</style>
+
+<!-- 스크립트 영역 -->
+<script>
+const selectEl = document.getElementById('board-type-select');
+let isOpen = false;
+
+selectEl.addEventListener('click', function() {
+    isOpen = !isOpen;
+});
+
+selectEl.addEventListener('blur', function() {
+    isOpen = false;
+});
+
+selectEl.addEventListener('mouseup', function(e) {
+    if (isOpen) {
+        setTimeout(() => {
+            const searchInput = document.getElementById('search-input');
+            
+            if (selectEl.value === 'all' && searchInput && searchInput.value.trim() !== '') {
+                searchInput.value = '';
+                selectEl.form.submit();
+            }
+            isOpen = false;
+        }, 50);
+    }
+});
+
+function handleBoardTypeChange(selectElement) {
+    if (selectElement.value === 'all') {
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+    }
+    selectElement.form.submit();
+}
+
+function changePerPage(value) {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('per_page', value);
+    urlParams.set('page', '1'); 
+    window.location.search = urlParams.toString();
+}
+</script>
 
 {% endblock %}

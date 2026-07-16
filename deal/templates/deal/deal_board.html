@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block content %}
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -9,71 +10,114 @@
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">최애의 굿즈를 안전하게 거래해 보세요.</p>
         </div>
         
-        <div class="flex gap-2 w-full md:max-w-sm">
-            <input type="text" placeholder="작품명, 캐릭터 검색..." class="w-full px-4 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
-            <button class="bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg whitespace-nowrap transition">검색</button>
-        </div>
+        <form method="GET" action="{% url 'deal:deal_board' %}" class="flex gap-2 w-full md:max-w-sm m-0 p-0">
+            {% if current_category %}
+                <input type="hidden" name="category" value="{{ current_category }}">
+            {% endif %}
+            {% if available_only %}
+                <input type="hidden" name="available_only" value="1">
+            {% endif %}
+
+            <input type="text" name="q" value="{{ search_query|default:'' }}" placeholder="작품명, 캐릭터 검색..."
+                   class="w-full px-4 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
+            <button type="submit" class="bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg whitespace-nowrap transition">검색</button>
+        </form>
     </div>
 
     <div class="flex justify-between items-center">
-        <div class="flex gap-2">
-            <a href="{% url 'deal:deal_board' %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if not current_category %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">전체</a>
-            <a href="{% url 'deal:deal_board' %}?category=acrylic" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'acrylic' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">아크릴</a>
-            <a href="{% url 'deal:deal_board' %}?category=paper" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'paper' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">지류/파샤</a>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'deal:deal_board' %}?{% if search_query %}q={{ search_query }}&{% endif %}{% if available_only %}available_only=1{% endif %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if not current_category %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">전체</a>
+            <a href="{% url 'deal:deal_board' %}?category=acrylic{% if search_query %}&q={{ search_query }}{% endif %}{% if available_only %}&available_only=1{% endif %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'acrylic' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">아크릴/키링</a>
+            <a href="{% url 'deal:deal_board' %}?category=paper{% if search_query %}&q={{ search_query }}{% endif %}{% if available_only %}&available_only=1{% endif %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'paper' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">지류/파샤</a>
+
+            <form method="GET" action="{% url 'deal:deal_board' %}" class="flex items-center gap-1.5 ml-2 pl-2 border-l border-gray-200 dark:border-gray-700 m-0 p-0">
+                {% if current_category %}
+                    <input type="hidden" name="category" value="{{ current_category }}">
+                {% endif %}
+                {% if search_query %}
+                    <input type="hidden" name="q" value="{{ search_query }}">
+                {% endif %}
+                <input type="checkbox" id="available_only" name="available_only" value="1" {% if available_only %}checked{% endif %} onchange="this.form.submit()"
+                       class="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-violet-600 focus:ring-violet-500 cursor-pointer">
+                <label for="available_only" class="text-xs font-bold text-gray-600 dark:text-gray-400 cursor-pointer select-none">판매 중</label>
+            </form>
         </div>
-        <a href="{% url 'deal:deal_add' %}" class="bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition">
-            + 굿즈 판매하기
-        </a>
+        <div class="flex items-center gap-2">
+            {% if request.user.is_staff %}
+                <a href="{% url 'deal:deal_report_list' %}" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 text-xs font-bold py-2 px-3.5 rounded-lg border border-red-100 dark:border-red-900 transition flex items-center gap-1">
+                    🚨 신고 관리
+                </a>
+            {% endif %}
+
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'deal:deal_my_reports' %}" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-bold py-2 px-3.5 rounded-lg border dark:border-gray-700 transition flex items-center gap-1">
+                    내 신고 내역
+                </a>
+            {% endif %}
+
+            <a href="{% url 'deal:deal_chat_list' %}" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-bold py-2 px-3.5 rounded-lg border dark:border-gray-700 transition flex items-center gap-1">
+                내 거래 채팅
+            </a>
+
+            <a href="{% url 'deal:deal_add' %}" class="bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition">
+                + 굿즈 판매하기
+            </a>
+        </div>
     </div>
+
+    {% if search_query %}
+        <div class="text-sm text-gray-600 dark:text-gray-400 bg-gray-100/50 dark:bg-gray-800/40 px-4 py-2.5 rounded-xl flex items-center justify-between">
+            <span>'<strong>{{ search_query }}</strong>' 검색 결과입니다.</span>
+            <a href="{% url 'deal:deal_board' %}?{% if current_category %}category={{ current_category }}&{% endif %}{% if available_only %}available_only=1{% endif %}" class="text-xs text-violet-600 dark:text-indigo-400 font-bold hover:underline">검색 지우기</a>
+        </div>
+    {% endif %}
 
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md dark:hover:border-indigo-500 transition duration-300 flex flex-col justify-between">
+        {% for goods in goods_list %}
+        <a href="{% url 'deal:deal_detail' goods.id %}" 
+           class="block bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md dark:hover:border-indigo-500 transition duration-300 flex flex-col justify-between {% if goods.status == 'sold' %}opacity-50{% endif %}">
+            
             <div class="relative bg-gray-100 dark:bg-gray-900 aspect-square flex items-center justify-center text-gray-400 text-xs">
-                <span>[굿즈 대표 이미지]</span>
-                <span class="absolute top-2 left-2 bg-violet-600 dark:bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">판매중</span>
+                {% if goods.image %}
+                    <div class="w-full aspect-square overflow-hidden">
+                        <img src="{{ goods.image.url }}" class="w-full h-full object-cover">
+                    </div>
+                {% else %}
+                    <span>[이미지 없음]</span>
+                {% endif %}
+                
+                {% if goods.status == 'sale' %}
+                    <span class="absolute top-2 left-2 bg-violet-600 dark:bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">판매중</span>
+                {% elif goods.status == 'reserved' %}
+                    <span class="absolute top-2 left-2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">예약중</span>
+                {% elif goods.status == 'sold' %}
+                    <span class="absolute top-2 left-2 bg-gray-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">판매완료</span>
+                {% endif %}
             </div>
-            <div class="p-4 space-y-1.5">
-                <span class="inline-block px-2 py-0.5 bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-indigo-300 text-[10px] font-bold rounded-md">#주술회전</span>
-                <h3 class="font-bold text-gray-900 dark:text-white text-sm line-clamp-1">고죠 사토루 2024 디오라마 아크릴</h3>
-                <div class="text-base font-black text-gray-900 dark:text-white">22,000원</div>
-                <div class="flex justify-between text-[11px] text-gray-400 dark:text-gray-500 pt-1">
-                    <span>반택/준등기</span>
-                    <span>방금 전</span>
-                </div>
-            </div>
-        </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md dark:hover:border-indigo-500 transition duration-300 flex flex-col justify-between">
-            <div class="relative bg-gray-100 dark:bg-gray-900 aspect-square flex items-center justify-center text-gray-400 text-xs">
-                <span>[굿즈 대표 이미지]</span>
-                <span class="absolute top-2 left-2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">예약중</span>
-            </div>
             <div class="p-4 space-y-1.5">
-                <span class="inline-block px-2 py-0.5 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 text-[10px] font-bold rounded-md">#프로세카</span>
-                <h3 class="font-bold text-gray-900 dark:text-white text-sm line-clamp-1">에나 파샤코레 10장 일괄 판매</h3>
-                <div class="text-base font-black text-gray-900 dark:text-white">15,000원</div>
-                <div class="flex justify-between text-[11px] text-gray-400 dark:text-gray-500 pt-1">
-                    <span>끼택/일택</span>
-                    <span>15분 전</span>
+                <span class="inline-block px-2 py-0.5 bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-indigo-300 text-[10px] font-bold rounded-md">#{{ goods.anime_title }}</span>
+                <h3 class="font-bold text-gray-900 dark:text-white text-sm line-clamp-1">{{ goods.title }}</h3>
+                <div class="text-base font-black text-gray-900 dark:text-white">{{ goods.price|intcomma }}원</div>
+                <div class="flex items-center justify-end gap-1 text-[11px] text-gray-400 dark:text-gray-500">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {{ goods.view_count }}
                 </div>
-            </div>
-        </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden opacity-50 flex flex-col justify-between">
-            <div class="relative bg-gray-200 dark:bg-gray-950 aspect-square flex items-center justify-center text-gray-400 text-xs">
-                <span class="text-gray-500 font-bold text-sm">판매 완료</span>
-            </div>
-            <div class="p-4 space-y-1.5">
-                <span class="inline-block px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px] font-bold rounded-md">#보컬로이드</span>
-                <h3 class="font-bold text-gray-400 dark:text-gray-500 text-sm line-clamp-1">하츠네 미쿠 누이구루미 인형</h3>
-                <div class="text-base font-black text-gray-400 dark:text-gray-500">30,000원</div>
                 <div class="flex justify-between text-[11px] text-gray-400 dark:text-gray-500 pt-1">
-                    <span>직거래/택배</span>
-                    <span>2시간 전</span>
+                    <span>{{ goods.shipping_methods }}</span>
+                    <span>{{ goods.time_display }}</span>
                 </div>
             </div>
+        </a> {% empty %}
+        <div class="col-span-full text-center py-16 text-gray-400 dark:text-gray-500">
+            현재 조건에 맞는 등록된 장터 굿즈 매물이 없습니다.
         </div>
+        {% endfor %}
 
     </div>
 </main>
