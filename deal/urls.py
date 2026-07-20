@@ -17,9 +17,4 @@ urlpatterns = [
     path('goods/<int:goods_id>/status-ajax/', views.change_goods_status_ajax, name='change_goods_status_ajax'),
     path('<int:goods_id>/wishlist-ajax/', views.toggle_wishlist, name='toggle_wishlist'),
     path('wishlist/', views.deal_wishlist, name='deal_wishlist'),
-    path('<int:goods_id>/report/', views.deal_goods_report, name='deal_goods_report'),
-    path('report/user/<str:username>/', views.deal_user_report, name='deal_user_report'),
-    path('reports/mine/', views.deal_my_reports, name='deal_my_reports'),
-    path('reports/', views.deal_report_list, name='deal_report_list'),
-    path('reports/<str:report_type>/<int:report_id>/status-ajax/', views.update_report_status_ajax, name='update_report_status_ajax'),
 ]

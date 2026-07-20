@@ -79,69 +79,6 @@ class Message(models.Model):
         return f"{self.sender.username}: {self.content[:20]}"
 
 
-class GoodsReport(models.Model):
-    # 신고 사유 정의
-    REASON_CHOICES = [
-        ('fraud', '사기 의심'),
-        ('fake', '허위매물/과장광고'),
-        ('prohibited', '거래 불가 품목'),
-        ('duplicate', '중복/도배 등록'),
-        ('etc', '기타'),
-    ]
-
-    # 처리 상태 정의
-    STATUS_CHOICES = [
-        ('pending', '대기'),
-        ('resolved', '처리완료'),
-        ('rejected', '반려'),
-    ]
-
-    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='goods_reports', verbose_name="신고자")
-    goods = models.ForeignKey(Goods, on_delete=models.CASCADE, related_name='reports', verbose_name="신고 대상 굿즈")
-    reason = models.CharField(max_length=20, choices=REASON_CHOICES, verbose_name="신고 사유")
-    detail = models.TextField(blank=True, verbose_name="상세 내용")
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending', verbose_name="처리 상태")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="신고일")
-
-    class Meta:
-        unique_together = ('reporter', 'goods')
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"[{self.get_status_display()}] {self.goods.title} 신고 ({self.reporter.username})"
-
-
-class UserReport(models.Model):
-    # 신고 사유 정의
-    REASON_CHOICES = [
-        ('fraud', '사기 피해'),
-        ('abusive', '비매너/욕설'),
-        ('noshow', '노쇼/일방적 거래 취소'),
-        ('etc', '기타'),
-    ]
-
-    # 처리 상태 정의
-    STATUS_CHOICES = [
-        ('pending', '대기'),
-        ('resolved', '처리완료'),
-        ('rejected', '반려'),
-    ]
-
-    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_user_reports', verbose_name="신고자")
-    reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_reports', verbose_name="신고 대상 유저")
-    reason = models.CharField(max_length=20, choices=REASON_CHOICES, verbose_name="신고 사유")
-    detail = models.TextField(blank=True, verbose_name="상세 내용")
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending', verbose_name="처리 상태")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="신고일")
-
-    class Meta:
-        unique_together = ('reporter', 'reported_user')
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"[{self.get_status_display()}] {self.reported_user.username} 신고 ({self.reporter.username})"
-
-
 class Wishlist(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlists', verbose_name="유저")
     goods = models.ForeignKey(Goods, on_delete=models.CASCADE, related_name='wishlisted_by', verbose_name="찜한 굿즈")

@@ -84,13 +84,7 @@
             <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 space-y-3 text-sm">
                 <div class="flex justify-between items-center">
                     <span class="text-gray-400 dark:text-gray-500 font-medium">판매자</span>
-                    <span class="flex items-center gap-2">
-                        <span class="font-bold text-gray-900 dark:text-white">{{ goods.seller.username }}</span>
-                        {% if request.user.is_authenticated and request.user != goods.seller %}
-                            <a href="{% url 'deal:deal_user_report' goods.seller.username %}?next={{ request.path|urlencode }}"
-                               class="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 underline transition">판매자 신고</a>
-                        {% endif %}
-                    </span>
+                    <span class="font-bold text-gray-900 dark:text-white">{{ goods.seller.username }}</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-gray-400 dark:text-gray-500 font-medium">배송 방법</span>
@@ -101,12 +95,6 @@
                     <span class="font-medium text-gray-600 dark:text-gray-400">{{ goods.created_at|date:"Y-m-d H:i" }}</span>
                 </div>
             </div>
-
-            {% if request.user.is_authenticated and request.user != goods.seller %}
-                <div class="text-right">
-                    <a href="{% url 'deal:deal_goods_report' goods.id %}" class="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 underline transition">이 상품 신고하기</a>
-                </div>
-            {% endif %}
 
             <div class="pt-1">
                 {% if request.user == goods.seller %}

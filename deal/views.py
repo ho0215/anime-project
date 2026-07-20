@@ -1,14 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.contrib import messages
 from .models import Goods
 from django.core.exceptions import PermissionDenied
-from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Q, Max, F
-from .models import Goods, ChatRoom, Message, Wishlist, GoodsReport, UserReport
+from .models import Goods, ChatRoom, Message, Wishlist
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
@@ -317,134 +314,3 @@ def deal_wishlist(request):
     return render(request, 'deal/deal_wishlist.html', {
         'wishlist_items': wishlist_items
     })
-
-
-@login_required(login_url='accounts:login')
-def deal_goods_report(request, goods_id):
-    """상품(굿즈) 신고 폼 표시 및 접수 처리"""
-    goods = get_object_or_404(Goods, id=goods_id)
-
-    # 본인 상품은 신고 불가
-    if goods.seller == request.user:
-        messages.error(request, '본인이 등록한 상품은 신고할 수 없습니다.')
-        return redirect('deal:deal_detail', goods_id=goods.id)
-
-    # 이미 신고한 상품이면 재신고 불가
-    if GoodsReport.objects.filter(reporter=request.user, goods=goods).exists():
-        messages.error(request, '이미 신고한 상품입니다.')
-        return redirect('deal:deal_detail', goods_id=goods.id)
-
-    if request.method == 'POST':
-        reason = request.POST.get('reason')
-        if reason not in dict(GoodsReport.REASON_CHOICES):
-            messages.error(request, '신고 사유를 선택해 주세요.')
-            return redirect('deal:deal_goods_report', goods_id=goods.id)
-
-        GoodsReport.objects.create(
-            reporter=request.user,
-            goods=goods,
-            reason=reason,
-            detail=request.POST.get('detail', ''),
-        )
-        messages.success(request, '신고가 접수되었습니다.')
-        return redirect('deal:deal_detail', goods_id=goods.id)
-
-    return render(request, 'deal/goods_report_form.html', {
-        'goods': goods,
-        'reason_choices': GoodsReport.REASON_CHOICES,
-    })
-
-
-@login_required(login_url='accounts:login')
-def deal_user_report(request, username):
-    """유저(프로필 단위) 신고 폼 표시 및 접수 처리"""
-    reported_user = get_object_or_404(User, username=username)
-    next_url = request.POST.get('next') or request.GET.get('next') or reverse('deal:deal_board')
-
-    # 본인 신고 불가
-    if reported_user == request.user:
-        messages.error(request, '본인을 신고할 수 없습니다.')
-        return redirect(next_url)
-
-    # 이미 신고한 유저면 재신고 불가
-    if UserReport.objects.filter(reporter=request.user, reported_user=reported_user).exists():
-        messages.error(request, '이미 신고한 유저입니다.')
-        return redirect(next_url)
-
-    if request.method == 'POST':
-        reason = request.POST.get('reason')
-        if reason not in dict(UserReport.REASON_CHOICES):
-            messages.error(request, '신고 사유를 선택해 주세요.')
-            return redirect(f"{reverse('deal:deal_user_report', kwargs={'username': reported_user.username})}?next={next_url}")
-
-        UserReport.objects.create(
-            reporter=request.user,
-            reported_user=reported_user,
-            reason=reason,
-            detail=request.POST.get('detail', ''),
-        )
-        messages.success(request, '신고가 접수되었습니다.')
-        return redirect(next_url)
-
-    return render(request, 'deal/user_report_form.html', {
-        'reported_user': reported_user,
-        'next_url': next_url,
-        'reason_choices': UserReport.REASON_CHOICES,
-    })
-
-
-@login_required(login_url='accounts:login')
-def deal_my_reports(request):
-    """내가 제출한 신고 내역(상품/유저) 확인"""
-    goods_reports = GoodsReport.objects.filter(reporter=request.user).select_related('goods')
-    user_reports = UserReport.objects.filter(reporter=request.user).select_related('reported_user')
-
-    return render(request, 'deal/my_reports.html', {
-        'goods_reports': goods_reports,
-        'user_reports': user_reports,
-    })
-
-
-@login_required(login_url='accounts:login')
-def deal_report_list(request):
-    """관리자용 전체 신고(상품/유저) 목록"""
-    if not request.user.is_staff:
-        raise PermissionDenied
-
-    status_filter = request.GET.get('status', 'all')
-
-    goods_reports = GoodsReport.objects.select_related('goods', 'reporter').order_by('-created_at')
-    user_reports = UserReport.objects.select_related('reported_user', 'reporter').order_by('-created_at')
-
-    if status_filter != 'all':
-        goods_reports = goods_reports.filter(status=status_filter)
-        user_reports = user_reports.filter(status=status_filter)
-
-    return render(request, 'deal/report_list.html', {
-        'goods_reports': goods_reports,
-        'user_reports': user_reports,
-        'status_filter': status_filter,
-        'status_choices': GoodsReport.STATUS_CHOICES,
-    })
-
-
-@login_required
-@require_POST
-def update_report_status_ajax(request, report_type, report_id):
-    if not request.user.is_staff:
-        return JsonResponse({'status': 'error', 'message': '권한이 없습니다.'}, status=403)
-
-    if report_type == 'goods':
-        report = get_object_or_404(GoodsReport, id=report_id)
-    elif report_type == 'user':
-        report = get_object_or_404(UserReport, id=report_id)
-    else:
-        return JsonResponse({'status': 'error', 'message': '잘못된 요청입니다.'}, status=400)
-
-    new_status = request.POST.get('status')
-    if new_status not in dict(GoodsReport.STATUS_CHOICES):
-        return JsonResponse({'status': 'error', 'message': '잘못된 상태 값입니다.'}, status=400)
-
-    report.status = new_status
-    report.save()
-    return JsonResponse({'status': 'success', 'current_status': new_status})
