@@ -5,6 +5,16 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from .models import CreativeWork, WorkImage
 from django.core.exceptions import PermissionDenied
+import re
+
+def clean_content(text):
+    """줄 앞뒤 공백 제거 + 연속된 빈 줄은 최대 1줄로 정리"""
+    if not text:
+        return text
+    lines = [line.strip() for line in text.splitlines()]
+    text = '\n'.join(lines)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
 
 # 1. 메인 갤러리 / 게시판 목록 (필터 및 정렬 기능 고도화)
 def work_list(request):
@@ -72,13 +82,23 @@ def work_create(request):
         target_program = request.POST.get('target_program')
         category = request.POST.get('category')
         title = request.POST.get('title')
-        content = request.POST.get('content')
+        content = clean_content(request.POST.get('content'))
         image = request.FILES.get('image')
+
+        # 코스프레/일러스트는 '게시'할 때 사진 필수 (임시저장은 예외)
+        if category != 'novel' and action == 'publish' and not image:
+            return render(request, 'works/work_form.html', {
+                'error': '코스프레/일러스트는 사진을 첨부해야 게시할 수 있어요.',
+                'target_program': target_program,
+                'category': category,
+                'title': title,
+                'content': content,
+            })
 
         work = CreativeWork.objects.create(
             target_program=target_program,
             category=category,
-            title=title,
+            title=title,                                       
             content=content,
             image=image,
             author=request.user,
@@ -87,7 +107,7 @@ def work_create(request):
         extra_images = request.FILES.getlist('extra_images')
         for img in extra_images:
             WorkImage.objects.create(work=work, image=img)
-            
+
         return redirect('works:work_detail', pk=work.pk)
 
     return render(request, 'works/work_form.html')
@@ -122,13 +142,22 @@ def work_update(request, pk):
 
     if request.method == 'POST':
         action = request.POST.get('action', 'publish')
+        category = request.POST.get('category')
+        image = request.FILES.get('image')
+
+        # 코스프레/일러스트는 '게시'할 때 사진 필수 (새 이미지도 없고 기존 이미지도 없으면 막음)
+        if category != 'novel' and action == 'publish' and not image and not work.image:
+            return render(request, 'works/work_form.html', {
+                'work': work,
+                'error': '코스프레/일러스트는 사진을 첨부해야 게시할 수 있어요.',
+            })
+
         work.target_program = request.POST.get('target_program')
-        work.category = request.POST.get('category')
+        work.category = category
         work.title = request.POST.get('title')
-        work.content = request.POST.get('content')
+        work.content = clean_content(request.POST.get('content'))
         work.status = 'draft' if action == 'draft' else 'published'
 
-        image = request.FILES.get('image')
         if image:
             work.image = image
         work.save()

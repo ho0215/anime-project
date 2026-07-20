@@ -47,17 +47,13 @@
         <div class="p-8 md:p-12">
             {% if work.category == 'novel' %}
                 <!-- 소설 뷰어 서체 및 간격 최적화 -->
-                <div class="text-gray-800 text-lg leading-loose font-serif whitespace-pre-wrap tracking-wide max-w-2xl mx-auto">
-                    {{ work.content }}
-                </div>
+                <div class="text-gray-800 text-lg leading-loose font-serif whitespace-pre-wrap tracking-wide max-w-2xl mx-auto text-left">{{ work.content }}</div>
                 <div class="text-center text-xs text-gray-400 mt-12 pt-4 border-t border-dashed">
                     본문 글자 수: 공백 포함 {{ work.content_length }}자
                 </div>
             {% else %}
                 <!-- 코스프레 / 일러스트 소개글 스타일 -->
-                <div class="text-gray-700 text-base leading-relaxed whitespace-pre-wrap font-sans">
-                    {{ work.content }}
-                </div>
+                <div class="text-gray-700 text-base leading-relaxed whitespace-pre-wrap font-sans">{{ work.content }}</div>
             {% endif %}
         </div>
 

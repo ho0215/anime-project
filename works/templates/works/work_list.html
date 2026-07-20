@@ -52,7 +52,7 @@
     <!-- 작품 리스트/갤러리 본문 -->
     {% if works %}
         {% if current_category == 'novel' %}
-            <!-- [소설 전용] 깔끔한 목록형 레이아웃 -->
+            <!-- [소설 전용] 깔끔한 목록형 레이아웃 (이미 전체 클릭 가능) -->
             <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm divide-y divide-gray-100">
                 {% for work in works %}
                     <a href="{% url 'works:work_detail' work.pk %}" class="block p-6 hover:bg-gray-50 transition">
@@ -72,18 +72,20 @@
             </div>
         {% else %}
             <!-- [코스프레 / 일러스트 / 전체 전용] 비주얼 카드형 갤러리 레이아웃 -->
+            <!-- 카드 전체(이미지, 여백, 작성자 영역 포함) 어디를 눌러도 상세 페이지로 이동 -->
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {% for work in works %}
-                    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col">
+                    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col cursor-pointer"
+                         onclick="location.href='{% url 'works:work_detail' work.pk %}'">
                         {% if work.category != 'novel' %}
-                        <a href="{% url 'works:work_detail' work.pk %}" class="block bg-gray-100 relative pt-[100%] overflow-hidden group">
+                        <div class="block bg-gray-100 relative pt-[100%] overflow-hidden group">
                             {% if work.image %}
                                 <img src="{{ work.image.url }}" alt="{{ work.title }}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-300">
                             {% endif %}
                             <span class="absolute top-2 left-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded backdrop-blur-sm">
                                 {{ work.get_category_display }}
                             </span>
-                        </a>
+                        </div>
                         {% endif %}
                         <div class="p-4 flex-1 flex flex-col justify-between">
                             <div>
@@ -93,9 +95,9 @@
                                     </span>
                                 {% endif %}
                                 <p class="text-xs font-medium text-indigo-600 mb-1">#{{ work.target_program }}</p>
-                                <a href="{% url 'works:work_detail' work.pk %}" class="block text-base font-bold text-gray-900 line-clamp-1 hover:text-indigo-600 mb-1">
+                                <p class="block text-base font-bold text-gray-900 line-clamp-1 hover:text-indigo-600 mb-1">
                                     {{ work.title }}
-                                </a>
+                                </p>
                                 <p class="text-xs text-gray-500">By {{ work.author.username }}</p>
                             </div>
                             <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-100 text-xs text-gray-400">
