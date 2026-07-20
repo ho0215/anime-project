@@ -40,3 +40,53 @@ class Goods(models.Model):
 
     def __str__(self):
         return f"[{self.get_status_display()}] {self.title} - {self.price}원"
+    
+# deal/models.py
+
+class ChatRoom(models.Model):
+    goods = models.ForeignKey(Goods, on_delete=models.CASCADE, related_name='chat_rooms', verbose_name="관련 굿즈")
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='buyer_rooms', verbose_name="구매자")
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='seller_rooms', verbose_name="판매자")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="방 생성일")
+
+    # 🛠️ 추가: 각각의 참여자가 마지막으로 대화창을 본 시간 기록
+    buyer_last_viewed = models.DateTimeField(auto_now_add=True, verbose_name="구매자 최종 확인 시각")
+    seller_last_viewed = models.DateTimeField(auto_now_add=True, verbose_name="판매자 최종 확인 시각")
+    
+    buyer_left = models.BooleanField(default=False, verbose_name="구매자 나감 여부")
+    seller_left = models.BooleanField(default=False, verbose_name="판매자 나감 여부")
+
+    class Meta:
+        unique_together = ('goods', 'buyer', 'seller')
+
+    def __str__(self):
+        return f"[{self.goods.title}] {self.buyer.username}님과 {self.seller.username}님의 채팅방"
+
+
+class Message(models.Model):
+    # 이 메시지가 속한 채팅방
+    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages', verbose_name="채팅방")
+    # 메시지를 보낸 사람 (buyer 혹은 seller 둘 중 한 명)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="발신자")
+    # 대화 내용
+    content = models.TextField(verbose_name="내용")
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="전송 시각")
+
+    class Meta:
+        ordering = ['timestamp'] # 채팅 내역은 무조건 보낸 순서대로 정렬
+
+    def __str__(self):
+        return f"{self.sender.username}: {self.content[:20]}"
+
+
+class Wishlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlists', verbose_name="유저")
+    goods = models.ForeignKey(Goods, on_delete=models.CASCADE, related_name='wishlisted_by', verbose_name="찜한 굿즈")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="찜한 시각")
+
+    class Meta:
+        unique_together = ('user', 'goods')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username}님이 찜한 {self.goods.title}"

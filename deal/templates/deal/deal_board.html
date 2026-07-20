@@ -42,10 +42,23 @@
                 <label for="available_only" class="text-xs font-bold text-gray-600 dark:text-gray-400 cursor-pointer select-none">판매 중</label>
             </form>
         </div>
-        <a href="{% url 'deal:deal_add' %}" class="bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition">
-            + 굿즈 판매하기
-        </a>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'deal:deal_chat_list' %}" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-bold py-2 px-3.5 rounded-lg border dark:border-gray-700 transition flex items-center gap-1">
+                💬 내 거래 채팅
+            </a>
+
+            <a href="{% url 'deal:deal_add' %}" class="bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition">
+                + 굿즈 판매하기
+            </a>
+        </div>
     </div>
+
+    {% if search_query %}
+        <div class="text-sm text-gray-600 dark:text-gray-400 bg-gray-100/50 dark:bg-gray-800/40 px-4 py-2.5 rounded-xl flex items-center justify-between">
+            <span>'<strong>{{ search_query }}</strong>' 검색 결과입니다.</span>
+            <a href="{% url 'deal:deal_board' %}?{% if current_category %}category={{ current_category }}&{% endif %}{% if available_only %}available_only=1{% endif %}" class="text-xs text-violet-600 dark:text-indigo-400 font-bold hover:underline">검색 지우기</a>
+        </div>
+    {% endif %}
 
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         
@@ -55,9 +68,7 @@
             
             <div class="relative bg-gray-100 dark:bg-gray-900 aspect-square flex items-center justify-center text-gray-400 text-xs">
                 {% if goods.image %}
-                    <div class="w-full aspect-square overflow-hidden">
-                        <img src="{{ goods.image.url }}" class="w-full h-full object-cover">
-                    </div>
+                    <img src="{{ goods.image.url }}" alt="{{ goods.title }}" class="w-full h-full object-cover">
                 {% else %}
                     <span>[이미지 없음]</span>
                 {% endif %}
