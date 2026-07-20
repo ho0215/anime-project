@@ -90,15 +90,17 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'aniverse',
-        'USER': 'admin',             # 3단계에서 만든 계정 이름
+        'USER': 'admin',                    
         'PASSWORD': 'admin', 
         'HOST': '192.168.32.76', # 예: 123.45.67.89
         'PORT': '3306',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+
         },
     }
 }
+
 
 
 # Password validation
