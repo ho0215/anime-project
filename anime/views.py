@@ -1,8 +1,8 @@
 import requests
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.db.models import Q
-from .models import Anime
+from .models import Anime, Review # 🔥 중복된 import 한 줄로 깔끔하게 정리
 
 def anime_list(request):
     query = request.GET.get('q', '').strip()
@@ -12,7 +12,6 @@ def anime_list(request):
 
     if query:
         # 1. 사용자가 검색하면 TMDB 검색 API를 먼저 호출합니다.
-        # include_adult=false : 성인물 제외
         url = f"https://api.themoviedb.org/3/search/tv?api_key={API_KEY}&query={query}&language=ko-KR&include_adult=false"
         
         try:
@@ -84,8 +83,8 @@ def home(request):
     # 4. 오늘의 추천 애니 (랜덤으로 10개 섞어서 가져오기)
     random_picks = Anime.objects.all().order_by('?')[:10]
 
-    # ⚠️ 메인 페이지용 HTML 파일 이름을 main.html로 지정합니다.
-    return render(request, 'anime/home.html', {
+    # 🔥 home.html에서 main.html로 수정 완료
+    return render(request, 'anime/main.html', {
         'top_rated': top_rated,
         'action_fantasy': action_fantasy,
         'romance': romance,
@@ -95,7 +94,16 @@ def home(request):
 def anime_detail(request, pk):
     anime = get_object_or_404(Anime, pk=pk)
     
-    # 🔥 TMDB API로 해당 애니메이션의 예고편(유튜브) 영상 정보만 실시간으로 가져옵니다.
+    if request.method == 'POST':
+        score = request.POST.get('score')
+        content = request.POST.get('content')
+        if score and content:
+            # DB에 리뷰 저장
+            Review.objects.create(anime=anime, score=int(score), content=content)
+            # 저장 후 새로고침 방지를 위해 상세페이지로 다시 리다이렉트
+            return redirect('anime:anime_detail', pk=pk)
+
+    # TMDB API로 해당 애니메이션의 예고편(유튜브) 영상 정보만 실시간으로 가져옵니다.
     API_KEY = 'fcf1e4d2533332357dde303d1d8fcf50'
     youtube_id = None
     
@@ -120,7 +128,17 @@ def anime_detail(request, pk):
     except Exception as e:
         print("영상 가져오기 실패:", e)
 
+    reviews = anime.reviews.all().order_by('-created_at')
+
     return render(request, 'anime/anime_detail.html', {
         'anime': anime,
-        'youtube_id': youtube_id  # 🔥 html로 유튜브 아이디를 넘겨줍니다.
+        'youtube_id': youtube_id, # 🔥 쉼표(,) 추가 완료!
+        'reviews': reviews,
     })
+    
+def review_delete(request, pk, review_pk):
+    review = get_object_or_404(Review, pk=review_pk)
+    # 현재 로그인한 사용자가 관리자(superuser)일 때만 삭제 실행
+    if request.user.is_superuser:
+        review.delete()
+    return redirect('anime:anime_detail', pk=pk)

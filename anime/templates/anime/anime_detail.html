@@ -97,5 +97,65 @@
         {% endif %}
         
     </div>
+
+    <hr class="border-gray-100 dark:border-gray-700 my-10">
+        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <span class="text-yellow-400">💬</span> 한줄평 리뷰
+        </h3>
+
+        <!-- 리뷰 작성 폼 -->
+        <form method="POST" class="mb-8 flex flex-col md:flex-row gap-3">
+            {% csrf_token %}
+            <!-- 평점 선택 (10점 만점) -->
+            <select name="score" class="px-4 py-3 rounded-xl border border-gray-300 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold md:w-32" required>
+                <option value="10" selected>10점 (최고)</option>
+                <option value="9">9점</option>
+                <option value="8">8점</option>
+                <option value="7">7점</option>
+                <option value="6">6점</option>
+                <option value="5">5점</option>
+                <option value="4">4점</option>
+                <option value="3">3점</option>
+                <option value="2">2점</option>
+                <option value="1">1점 (최악)</option>
+            </select>
+            <!-- 리뷰 내용 입력창 -->
+            <input type="text" name="content" placeholder="이 애니메이션에 대한 솔직한 한줄평을 남겨주세요!" 
+                   class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required maxlength="200">
+            <button type="submit" class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition whitespace-nowrap">
+                등록
+            </button>
+        </form>
+
+        <!-- 리뷰 목록 보여주기 -->
+        <div class="space-y-4">
+            {% for review in reviews %}
+            <div class="bg-gray-50 dark:bg-gray-700/50 p-5 rounded-2xl flex justify-between items-center border border-gray-100 dark:border-gray-700 transition hover:bg-gray-100 dark:hover:bg-gray-700">
+                <div class="flex items-start md:items-center gap-4 flex-col md:flex-row w-full">
+                    <span class="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 text-sm font-extrabold px-3 py-1 rounded-full whitespace-nowrap">
+                        ★ {{ review.score }}
+                    </span>
+                    <p class="text-gray-800 dark:text-gray-200 text-lg flex-1 word-break">{{ review.content }}</p>
+                </div>
+                
+                <div class="flex items-center gap-4 ml-4">
+                    <span class="text-sm text-gray-400 whitespace-nowrap">{{ review.created_at|date:"Y.m.d" }}</span>
+                    <!-- 관리자에게만 보이는 삭제 버튼 -->
+                    {% if request.user.is_superuser %}
+                    <form method="POST" action="{% url 'anime:review_delete' anime.pk review.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="text-red-500 hover:text-red-700 text-sm font-bold bg-red-100 dark:bg-red-900/30 px-3 py-1 rounded-full transition" onclick="return confirm('이 리뷰를 삭제하시겠습니까?');">
+                            삭제
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-10 bg-gray-50 dark:bg-gray-700/30 rounded-2xl border border-dashed border-gray-300 dark:border-gray-600">
+                <p class="text-gray-500 dark:text-gray-400">아직 등록된 한줄평이 없습니다. 첫 번째 리뷰를 남겨보세요!</p>
+            </div>
+            {% endfor %}
+        </div>
 </div>
 {% endblock %}
