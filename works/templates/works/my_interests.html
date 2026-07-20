@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-12">
+<<<<<<< HEAD
 
     <!-- 마이페이지 서브 내비게이션 -->
     <div class="flex gap-2 bg-gray-100 p-1 rounded-xl w-fit mb-6">
@@ -9,10 +10,13 @@
         <a href="{% url 'works:my_interests' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-900 shadow-sm">관심목록</a>
     </div>
 
+=======
+>>>>>>> f8e7bcdd44b45fbc05701837957da233175870d9
     <h2 class="text-2xl font-bold text-gray-900 mb-6">관심목록</h2>
     {% if interests %}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {% for work in interests %}
+<<<<<<< HEAD
                 <div class="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-400 transition cursor-pointer"
                      onclick="location.href='{% url 'works:work_detail' work.pk %}'">
                     <p class="text-sm font-semibold text-gray-800 mb-1">{{ work.title }}</p>
@@ -23,10 +27,21 @@
                            class="text-xs text-gray-400 hover:text-red-500">해제</a>
                     </div>
                 </div>
+=======
+                <a href="{% url 'works:work_detail' work.pk %}"
+                   class="block bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-400 transition">
+                    <p class="text-sm font-semibold text-gray-800 mb-1">{{ work.title }}</p>
+                    <p class="text-xs text-gray-400">{{ work.author.username }}</p>
+                </a>
+>>>>>>> f8e7bcdd44b45fbc05701837957da233175870d9
             {% endfor %}
         </div>
     {% else %}
         <p class="text-sm text-gray-400 text-center py-10">관심목록에 담긴 글이 없어요.</p>
     {% endif %}
 </div>
+<<<<<<< HEAD
 {% endblock %}
+=======
+{% endblock %}
+>>>>>>> f8e7bcdd44b45fbc05701837957da233175870d9

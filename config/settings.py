@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     'deal.apps.DealConfig',
     'works.apps.WorksConfig',
     'community.apps.CommunityConfig',
+    'ckeditor',
+    'ckeditor_uploader',
 ]
 
 
@@ -87,10 +89,10 @@ ASGI_APPLICATION = 'config.asgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mydb',          # 실제 MariaDB에 생성한 DB 이름
-        'USER': 'ho0215',              # MariaDB 계정 이름
-        'PASSWORD': 'ho0215', # 본인이 설정한 비밀번호
-        'HOST': 'localhost',
+        'NAME': 'aniverse',
+        'USER': 'admin',             # 3단계에서 만든 계정 이름
+        'PASSWORD': 'admin', 
+        'HOST': '192.168.32.76', # 예: 123.45.67.89
         'PORT': '3306',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
@@ -132,7 +134,7 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
-
+BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_URL = 'static/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
@@ -142,10 +144,4 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
-}
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'works'
+LOGIN_URL = '/accounts/login/'

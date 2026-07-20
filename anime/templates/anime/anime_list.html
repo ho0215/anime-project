@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-12">
+    <!-- 헤더 및 검색창 -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+        <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white">애니메이션 목록</h2>
+        
+        <form method="get" action="{% url 'anime:anime_list' %}" class="flex w-full md:w-1/2">
+            <!-- 검색창 영역 -->
+            <div class="relative w-full">
+                <input type="text" id="searchInput" name="q" value="{{ query }}" placeholder="애니메이션 제목 검색..." 
+                       class="w-full px-4 py-2 pr-10 rounded-l-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:outline-none dark:bg-gray-800 dark:border-gray-600 dark:text-white">
+                
+                <!-- X 버튼 (자바스크립트로 제어하기 위해 id 부여) -->
+                <button type="button" id="clearBtn"
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-bold transition {% if not query %}hidden{% endif %}">
+                    ✕
+                </button>
+            </div>
+            
+            <button type="submit" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-r-xl transition whitespace-nowrap">
+                검색
+            </button>
+        </form>
+    </div>
+
+    <!-- 리스트 -->
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+        {% for anime in page_obj %}
+        <!-- 🔥 div를 a 태그로 변경하고 href 추가 -->
+        <a href="{% url 'anime:anime_detail' anime.pk %}" class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 flex flex-col group">
+            <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="w-full h-72 object-cover">
+            <div class="p-5 flex-1 flex flex-col">
+                <!-- 마우스 올리면 제목이 보라색으로 변하는 효과 추가 (group-hover:text-purple-600) -->
+                <h3 class="font-bold text-lg text-gray-900 dark:text-white line-clamp-1 group-hover:text-purple-600 transition">{{ anime.title }}</h3>
+                <p class="text-xs text-gray-500 mt-1 mb-2">{{ anime.genre }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-3 flex-1">{{ anime.synopsis }}</p>
+                <p class="text-sm text-purple-600 font-semibold">평점: {{ anime.score }}</p>
+            </div>
+        </a>
+        {% empty %}
+        <div class="col-span-full py-12 text-center text-gray-500">
+            {% if query %}
+                '{{ query }}'에 대한 검색 결과가 없습니다.
+            {% else %}
+                등록된 애니메이션이 없습니다.
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 페이지네이션 컨트롤 -->
+    {% if page_obj.has_other_pages %}
+    <div class="flex justify-center items-center mt-12 gap-2">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-purple-100 hover:text-purple-600 transition font-medium">이전</a>
+        {% else %}
+            <span class="px-4 py-2 bg-gray-50 text-gray-300 dark:bg-gray-800 dark:text-gray-600 rounded-lg cursor-not-allowed font-medium">이전</span>
+        {% endif %}
+        
+        <div class="flex gap-1">
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg shadow-md">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-purple-100 hover:text-purple-600 transition font-medium">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+        
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-purple-100 hover:text-purple-600 transition font-medium">다음</a>
+        {% else %}
+            <span class="px-4 py-2 bg-gray-50 text-gray-300 dark:bg-gray-800 dark:text-gray-600 rounded-lg cursor-not-allowed font-medium">다음</span>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const searchInput = document.getElementById('searchInput');
+        const clearBtn = document.getElementById('clearBtn');
+
+        // 1. 사용자가 키보드로 글자를 입력하거나 지울 때마다 실행
+        searchInput.addEventListener('input', function() {
+            if (this.value.trim().length > 0) {
+                // 글자가 있으면 X 버튼 나타나게 하기
+                clearBtn.classList.remove('hidden');
+            } else {
+                // 글자를 다 지우면 화면 이동 없이 X 버튼만 숨기기
+                clearBtn.classList.add('hidden');
+            }
+        });
+
+        // 2. X 버튼을 클릭했을 때 실행
+        clearBtn.addEventListener('click', function() {
+            // 검색창 텍스트만 비우고 X 버튼 숨기기 (화면 이동 없음)
+            searchInput.value = '';
+            clearBtn.classList.add('hidden');
+            
+            // 글자를 지운 후 바로 다시 검색할 수 있도록 입력창에 커서 맞추기
+            searchInput.focus(); 
+        });
+    });
+</script>
+{% endblock %}

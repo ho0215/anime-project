@@ -5,6 +5,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ANIVERSE</title>
+    
+    <!-- 1. Tailwind CSS 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Tailwind 다크모드 설정 -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+
+    <!-- 3. 깜빡임 방지(FOUC) 스크립트: 화면을 그리기 전에 테마를 먼저 결정합니다 -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,20 +38,12 @@
                 <div class="flex items-center gap-6">
                     <a href="/" class="text-2xl font-black text-violet-600 dark:text-indigo-400 tracking-tight">ANIVERSE</a>
                     <div class="hidden md:flex space-x-4">
-                        <a href="{% url 'works:work_list' %}" class="hover:text-violet-600 dark:hover:text-white font-medium transition {% if '/works/' in request.path %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400{% endif %}">
-                            창작마당
-                        </a>
-
-                        <a href="{% url 'anime:anime_list' %}" class="hover:text-violet-600 dark:hover:text-white font-medium transition {% if '/anime/' in request.path %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400{% endif %}">
-                            애니메이션
-                        </a>
-
-                        <a href="{% url 'deal:deal_board' %}" class="hover:text-violet-600 dark:hover:text-white font-medium transition {% if '/deal/' in request.path %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400{% endif %}">
-                            거래 / 장터
-                        </a>
+                        <a href="/" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">일러스트</a>
+                        <a href="{% url 'anime:anime_list' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">애니메이션</a>
+                        <a href="{% url 'deal:deal_board' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">거래 / 장터</a>
                     </div>
                 </div>
-                
+                    
                 <div class="flex items-center gap-4">
                     <button id="theme-toggle" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition">
                         <span id="theme-icon">🌙</span>
@@ -58,19 +70,20 @@
     {% block content %}
     {% endblock %}
 
+    <!-- 4. 토글 버튼 클릭 이벤트 스크립트 -->
     <script>
         const themeToggleBtn = document.getElementById('theme-toggle');
         const themeIcon = document.getElementById('theme-icon');
         const htmlElement = document.documentElement;
 
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            htmlElement.classList.add('dark');
+        // 화면 로딩 직후, 현재 테마에 맞게 해/달 아이콘을 맞춰줍니다.
+        if (htmlElement.classList.contains('dark')) {
             themeIcon.textContent = '☀️';
         } else {
-            htmlElement.classList.remove('dark');
             themeIcon.textContent = '🌙';
         }
 
+        // 버튼 클릭 시 작동할 이벤트
         themeToggleBtn.addEventListener('click', () => {
             htmlElement.classList.toggle('dark');
             if (htmlElement.classList.contains('dark')) {
