@@ -78,12 +78,10 @@
     {% endif %}
 </div>
 
-<!-- 실시간 검색창 제어 스크립트 -->
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         const searchInput = document.getElementById('searchInput');
         const clearBtn = document.getElementById('clearBtn');
-        const baseUrl = "{% url 'anime:anime_list' %}";
 
         // 1. 사용자가 키보드로 글자를 입력하거나 지울 때마다 실행
         searchInput.addEventListener('input', function() {
@@ -91,17 +89,19 @@
                 // 글자가 있으면 X 버튼 나타나게 하기
                 clearBtn.classList.remove('hidden');
             } else {
-                // 글자를 다 지우면 X 버튼 숨기고, 기본 애니메이션 목록으로 자동 이동
+                // 글자를 다 지우면 화면 이동 없이 X 버튼만 숨기기
                 clearBtn.classList.add('hidden');
-                window.location.href = baseUrl;
             }
         });
 
         // 2. X 버튼을 클릭했을 때 실행
         clearBtn.addEventListener('click', function() {
-            // 검색창 텍스트 비우고, 기본 애니메이션 목록으로 자동 이동
+            // 검색창 텍스트만 비우고 X 버튼 숨기기 (화면 이동 없음)
             searchInput.value = '';
-            window.location.href = baseUrl;
+            clearBtn.classList.add('hidden');
+            
+            // 글자를 지운 후 바로 다시 검색할 수 있도록 입력창에 커서 맞추기
+            searchInput.focus(); 
         });
     });
 </script>
