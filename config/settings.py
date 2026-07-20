@@ -144,11 +144,4 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
-}
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-CKEDITOR_UPLOAD_PATH = 'uploads/'
+LOGIN_URL = '/accounts/login/'
