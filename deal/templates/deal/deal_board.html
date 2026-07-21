@@ -29,6 +29,9 @@
             <a href="{% url 'deal:deal_board' %}?{% if search_query %}q={{ search_query }}&{% endif %}{% if available_only %}available_only=1{% endif %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if not current_category %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">전체</a>
             <a href="{% url 'deal:deal_board' %}?category=acrylic{% if search_query %}&q={{ search_query }}{% endif %}{% if available_only %}&available_only=1{% endif %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'acrylic' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">아크릴/키링</a>
             <a href="{% url 'deal:deal_board' %}?category=paper{% if search_query %}&q={{ search_query }}{% endif %}{% if available_only %}&available_only=1{% endif %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'paper' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">지류/파샤</a>
+            <a href="{% url 'deal:deal_board' %}?category=figure{% if search_query %}&q={{ search_query }}{% endif %}{% if available_only %}&available_only=1{% endif %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'figure' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">피규어/넨도로이드</a>
+            <a href="{% url 'deal:deal_board' %}?category=plush{% if search_query %}&q={{ search_query }}{% endif %}{% if available_only %}&available_only=1{% endif %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'plush' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">누이/인형</a>
+            <a href="{% url 'deal:deal_board' %}?category=etc{% if search_query %}&q={{ search_query }}{% endif %}{% if available_only %}&available_only=1{% endif %}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if current_category == 'etc' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border bor즈der-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">기타 굿즈</a>
 
             <form method="GET" action="{% url 'deal:deal_board' %}" class="flex items-center gap-1.5 ml-2 pl-2 border-l border-gray-200 dark:border-gray-700 m-0 p-0">
                 {% if current_category %}
@@ -51,12 +54,12 @@
 
             {% if request.user.is_authenticated %}
                 <a href="{% url 'deal:deal_my_reports' %}" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-bold py-2 px-3.5 rounded-lg border dark:border-gray-700 transition flex items-center gap-1">
-                    📋 내 신고 내역
+                    내 신고 내역
                 </a>
             {% endif %}
 
             <a href="{% url 'deal:deal_chat_list' %}" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-bold py-2 px-3.5 rounded-lg border dark:border-gray-700 transition flex items-center gap-1">
-                💬 내 거래 채팅
+                내 거래 채팅
             </a>
 
             <a href="{% url 'deal:deal_add' %}" class="bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition">
