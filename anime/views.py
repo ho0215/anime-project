@@ -2,36 +2,34 @@ import requests
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.db.models import Q
-from .models import Anime, Review # 🔥 중복된 import 한 줄로 깔끔하게 정리
+from .models import Anime, Review 
+import requests
+from django.shortcuts import render, get_object_or_404, redirect
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Avg
+from .models import Anime, Review
 
 def anime_list(request):
     query = request.GET.get('q', '').strip()
+    sort = request.GET.get('sort', 'score')
     
-    # ⚠️ 여기에 본인의 TMDB API KEY를 꼭 넣어주세요!
     API_KEY = 'fcf1e4d2533332357dde303d1d8fcf50'
 
     if query:
-        # 1. 사용자가 검색하면 TMDB 검색 API를 먼저 호출합니다.
         url = f"https://api.themoviedb.org/3/search/tv?api_key={API_KEY}&query={query}&language=ko-KR&include_adult=false"
-        
         try:
             response = requests.get(url)
             if response.status_code == 200:
                 data = response.json().get('results', [])
-                
                 for item in data:
-                    # TMDB에서 애니메이션 장르 ID는 '16'입니다. 애니메이션이 아닌 것은 제외합니다.
                     if 16 not in item.get('genre_ids', []):
                         continue
-                        
-                    # 이름이나 줄거리가 없으면 제외
                     if not item.get('name') or not item.get('overview'):
                         continue
 
                     image_path = item.get('poster_path')
                     image_url = f"https://image.tmdb.org/t/p/w500{image_path}" if image_path else "https://via.placeholder.com/500x750?text=No+Image"
 
-                    # 2. 가져온 데이터를 우리 DB에 실시간으로 저장(또는 업데이트)합니다.
                     Anime.objects.update_or_create(
                         api_id=item['id'],
                         defaults={
@@ -40,28 +38,47 @@ def anime_list(request):
                             'synopsis': item['overview'],
                             'image_url': image_url,
                             'score': item.get('vote_average', 0.0),
+                            'first_air_date': item.get('first_air_date', ''), 
                         }
                     )
         except Exception as e:
             print(f"API 호출 에러: {e}")
 
-        # 3. API 통신이 끝난 후, 우리 DB에서 검색어를 포함한 결과를 가져와 화면에 뿌려줍니다.
-        anime_list = Anime.objects.filter(
-            Q(title__icontains=query) | Q(synopsis__icontains=query)
-        ).order_by('-score')
-
+        base_qs = Anime.objects.filter(Q(title__icontains=query) | Q(synopsis__icontains=query))
     else:
-        # 검색어가 없을 때는 기존처럼 DB에 저장된 전체 목록을 보여줍니다.
-        anime_list = Anime.objects.all().order_by('-score')
+        base_qs = Anime.objects.all()
 
-    # 페이지네이션 (16개씩)
-    paginator = Paginator(anime_list, 16)
+    # 🔥 변수 이름을 anime_list 에서 animes 로 변경하여 충돌을 방지했습니다.
+    if sort == 'popular':
+        # 인기순: 리뷰가 많은 순서 (리뷰 개수가 같으면 평점 높은 순)
+        animes = base_qs.annotate(review_count=Count('reviews')).order_by('-review_count', '-score')
+    elif sort == 'date_desc':
+        # 최신순: 방영일이 최근인 순서 (내림차순)
+        animes = base_qs.order_by('-first_air_date')
+    elif sort == 'date_asc':
+        # 과거순: 방영일이 오래된 순서 (오름차순)
+        animes = base_qs.order_by('first_air_date')
+    elif sort == 'score':
+        # ⭐ 별점순 (TMDB에서 가져온 DB 평점순)
+        # 평점이 높은 순서대로 정렬하되, 평점이 같으면 최신 방영일 순으로 보여줍니다.
+        animes = base_qs.order_by('-score', '-first_air_date')
+        
+        # 💡 [참고] 만약 TMDB 평점이 아니라, 
+        # "우리 사이트 회원들이 남긴 리뷰(Review) 별점의 평균"으로 정렬하고 싶다면 위 코드를 지우고 아래 코드를 쓰세요!
+        # animes = base_qs.annotate(avg_score=Avg('reviews__score')).order_by('-avg_score', '-first_air_date')
+    else:
+        # 기본값 (버튼을 누르지 않았을 때도 별점순 적용)
+        animes = base_qs.order_by('-score', '-first_air_date')
+
+    # 페이지네이션에 animes 를 넣어줍니다.
+    paginator = Paginator(animes, 16)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     return render(request, 'anime/anime_list.html', {
         'page_obj': page_obj,
         'query': query,
+        'sort': sort, 
     })
 
 def home(request):
