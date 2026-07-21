@@ -4,6 +4,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count, Q, Case, When, Value, IntegerField
 from django.core.paginator import Paginator
 from django.core.exceptions import PermissionDenied
+from django.utils import timezone  # 💡 추가: 실시간 기준 계산을 위해 임포트
+from datetime import timedelta     # 💡 추가: 24시간 범위 계산을 위해 임포트
 from .models import Post, Comment
 from .forms import PostForm  # 1번에서 만든 폼 임포트
 from .forms import CommentForm
@@ -25,8 +27,6 @@ def board_list(request):
     # annotate 안에서 좋아요 개수(like_count) 뿐만 아니라 
     # 댓글 개수(comment_count)도 DB 단계에서 한꺼번에 미리 계산해옵니다.
     if board_type == 'all':
-        # 🛠️ 수정: .exclude(board_type='notice')를 제거하여 전체 게시판에 공지사항을 포함시킵니다.
-        # ⭐️ 추가: Case-When 문을 사용해 공지사항(notice) 글이 무조건 리스트 최상단에 오도록 정렬 점수(priority)를 부여합니다.
         posts = (Post.objects.all()
                  .annotate(
                      like_count=Count('likes', distinct=True),
@@ -67,12 +67,42 @@ def board_list(request):
                 )
                 .order_by('-created_at')[:3])
 
+    # ----------------------------------------------------
+    # 💡 [여기서부터 사이드바용 데이터 추가 영역]
+    # ----------------------------------------------------
+    # 최근 24시간 기준 시간 설정
+    time_threshold = timezone.now() - timedelta(hours=24)
+    
+    # 1. 실시간 베스트: 최근 24시간 내 글 중 조회수(view_count) 순 정렬 (5개)
+    # (만약 view_count가 모델에 없다면 -like_count로 변경 가능)
+    realtime_best = (Post.objects.filter(created_at__gte=time_threshold)
+                     .annotate(comment_count=Count('comments', distinct=True))
+                     .order_by('-view_count')[:5])
+    
+    # 2. 지금 핫한 토론: 최근 24시간 내 댓글이 많이 달린 글 순 정렬 (5개)
+    hot_discussion = (Post.objects.filter(created_at__gte=time_threshold)
+                      .annotate(comment_count=Count('comments', distinct=True))
+                      .order_by('-comment_count')[:5])
+    
+    # 3. 답변을 기다려요: 카테고리가 '질문'(혹은 qna)이면서 댓글이 0개인 최신글 (5개)
+    # (모델의 질문 카테고리 명이 '질문'인지 'qna'인지 확인 후 맞춰주세요)
+    waiting_questions = (Post.objects.filter(board_type='질문')
+                         .annotate(comment_count=Count('comments', distinct=True))
+                         .filter(comment_count=0)
+                         .order_by('-created_at')[:5])
+    # ----------------------------------------------------
+
     return render(request, 'community/list.html', {
         'posts': page_obj,          # 기존 쿼리셋 대신 페이징 객체(page_obj)를 넘겨줍니다.
         'notices': notices,
         'current_type': board_type,
         'per_page': per_page,       # 템플릿에서 현재 몇 개씩 보기인지 유지하기 위해 전달
         'search_query': search_query, # 템플릿 검색창에 검색어를 유지하기 위해 전달
+        
+        # 💡 [컨텍스트에 사이드바 데이터 추가]
+        'realtime_best': realtime_best,
+        'hot_discussion': hot_discussion,
+        'waiting_questions': waiting_questions,
     })
     
     
@@ -83,14 +113,12 @@ def post_detail(request, pk):
     post.view_count += 1 
     post.save()
 
-    # 💡 [위치 수정] 이전 return문 때문에 막혔던 로직들을 위로 올렸습니다.
     # 대댓글이 아닌 원댓글만 1차로 가져오기
     comments = post.comments.filter(parent_comment__isnull=True)
     
     if request.method == 'POST':
-        # 로그인한 사용자만 댓글 작성 가능하도록 안전장치 추가 (필요시 사용)
         if not request.user.is_authenticated:
-            return redirect('login') # 혹은 로그인 페이지 url
+            return redirect('login') 
             
         comment_form = CommentForm(request.POST)
         if comment_form.is_valid():
@@ -98,7 +126,6 @@ def post_detail(request, pk):
             comment.post = post
             comment.author = request.user
             
-            # 대댓글인 경우 처리 (Form hidden input 등으로 parent_id를 넘겨받음)
             parent_id = request.POST.get('parent_id')
             if parent_id:
                 parent_comment = get_object_or_404(Comment, pk=parent_id)
@@ -137,36 +164,27 @@ def post_create(request):
         )
         return redirect('community:board_list')
 
-    # GET 요청일 때 에디터가 포함된 폼을 템플릿으로 넘겨줍니다.
     form = PostForm()
     return render(request, 'community/post_form.html', {'form': form})
 
 
-# 추천(좋아요) 비즈니스 로직 뷰
 @login_required
 def post_like(request, pk):
     post = get_object_or_404(Post, pk=pk)
     
-    # 이미 로그인한 유저가 추천을 눌렀다면 관계 삭제(추천 취소), 안 눌렀다면 추가
     if post.likes.filter(id=request.user.id).exists():
         post.likes.remove(request.user)
     else:
         post.likes.add(request.user)
         
-    # 추천을 완료한 후 다시 해당 게시글 상세 페이지(detail)로 이동합니다.
     return redirect('community:post_detail', pk=post.pk)
 
-
-# ----------------------------------------------------
-# 💡 새롭게 추가된 기능: 게시글 수정 & 삭제 뷰 함수
-# ----------------------------------------------------
 
 @login_required
 def post_delete(request, pk):
     """게시글 삭제 기능"""
     post = get_object_or_404(Post, pk=pk)
     
-    # 본인이 작성한 글만 삭제 가능하도록 제한
     if request.user != post.author:
         messages.error(request, '본인이 작성한 글만 삭제할 수 있습니다.')
         return redirect('community:post_detail', pk=post.pk)
@@ -178,7 +196,7 @@ def post_delete(request, pk):
 
 @login_required
 def post_edit(request, pk):
-    """게시글 수정 기능 (수정 오류 해결을 위해 100% 직관적인 데이터 매핑으로 강제 변환)"""
+    """게시글 수정 기능"""
     post = get_object_or_404(Post, pk=pk)
     
     if request.user != post.author:
@@ -190,17 +208,15 @@ def post_edit(request, pk):
         post.title = request.POST.get('title')
         post.content = request.POST.get('content')
         
-        # 새로운 이미지 파일이 업로드된 경우 교체
         if request.FILES.get('image'):
             post.image = request.FILES.get('image')
             
-        # ❌ 유저가 [X] 버튼을 눌러 기존 이미지를 지운 경우의 예외 처리
         if request.POST.get('clear_image') == 'true':
             if post.image:
                 post.image.delete(save=False) 
             post.image = None
 
-        post.save()  # 👈 수정한 데이터들이 데이터베이스에 완벽하게 확정 반영됩니다.
+        post.save() 
         messages.success(request, '게시글이 성공적으로 수정되었습니다.')
         return redirect('community:post_detail', pk=post.pk)
         
@@ -214,16 +230,11 @@ def post_edit(request, pk):
     })
 
 
-# ----------------------------------------------------
-# 💡 새로 추가된 기능: 댓글 수정 & 삭제 뷰 함수
-# ----------------------------------------------------
-
 @login_required(login_url='accounts:login')
 def comment_edit(request, comment_id):
     """댓글 수정 기능"""
     comment = get_object_or_404(Comment, id=comment_id)
     
-    # 작성자 본인만 수정 가능
     if comment.author != request.user:
         raise PermissionDenied
         
@@ -231,7 +242,7 @@ def comment_edit(request, comment_id):
         content = request.POST.get('content')
         if content:
             comment.content = content
-            comment.is_updated = True  # 템플릿의 (수정됨) 표시와 연동
+            comment.is_updated = True 
             comment.save()
             messages.success(request, '댓글이 수정되었습니다.')
             
@@ -240,14 +251,13 @@ def comment_edit(request, comment_id):
 
 @login_required(login_url='accounts:login')
 def comment_delete(request, comment_id):
-    """댓글 삭제 기능 (본인 또는 관리자만 삭제 가능)"""
+    """댓글 삭제 기능"""
     comment = get_object_or_404(Comment, id=comment_id)
     post_pk = comment.post.pk
     
-    # 작성자 본인이거나 관리자(superuser, staff)인 경우에만 삭제 허용
     if comment.author != request.user and not request.user.is_superuser and not request.user.is_staff:
         raise PermissionDenied
         
     comment.delete()
     messages.success(request, '댓글이 삭제되었습니다.')
-    return redirect('community:post_detail', pk=post_pk)        
+    return redirect('community:post_detail', pk=post_pk)
