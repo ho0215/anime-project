@@ -10,6 +10,9 @@
 
     <form action="{% url 'deal:deal_edit' goods.id %}" method="POST" enctype="multipart/form-data" class="space-y-6">
         {% csrf_token %}
+        
+        <!-- 🔥 백엔드에 기존 이미지 삭제 여부를 알려주는 히든 인풋 -->
+        <input type="hidden" id="delete-image-flag" name="delete_image" value="false">
 
         <div class="space-y-2">
             <label class="block text-sm font-bold text-gray-700 dark:text-gray-300">상품 이미지 변경</label>
@@ -23,21 +26,29 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
                     </svg>
                     <span style="font-size: 11px;" class="text-gray-400 mt-1">새 이미지 등록</span>
-                    <input type="file" id="file-input" name="images" accept="image/*" class="hidden" multiple>
+                    <input type="file" id="file-input" name="image" accept="image/*" class="hidden" multiple>
                 </label>
                 
-                <div id="preview-1" class="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg flex items-center justify-center text-gray-400 border-dashed overflow-hidden"
-                    style="height: 120px; font-size: 11px;">
-                    {% if goods.image %}
-                        <img src="{{ goods.image.url }}" class="w-full h-full object-cover">
-                    {% else %}
-                        <span>미리보기 1</span>
-                    {% endif %}
+                <div class="relative bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg flex items-center justify-center text-gray-400 border-dashed overflow-hidden" style="height: 120px; font-size: 11px;">
+                    <div id="preview-1" class="w-full h-full flex items-center justify-center">
+                        {% if goods.image %}
+                            <img src="{{ goods.image.url }}" class="w-full h-full object-cover">
+                        {% else %}
+                            <span>미리보기 1</span>
+                        {% endif %}
+                    </div>
+                    <button type="button" id="remove-btn-1" onclick="removeImage(0)" class="absolute top-1.5 right-1.5 w-6 h-6 bg-gray-900/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition z-10 {% if not goods.image %}hidden{% endif %}">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
                 </div>
                 
-                <div id="preview-2" class="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg flex items-center justify-center text-gray-400 border-dashed overflow-hidden"
-                    style="height: 120px; font-size: 11px;">
-                    <span>미리보기 2</span>
+                <div class="relative bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg flex items-center justify-center text-gray-400 border-dashed overflow-hidden" style="height: 120px; font-size: 11px;">
+                    <div id="preview-2" class="w-full h-full flex items-center justify-center">
+                        <span>미리보기 2</span>
+                    </div>
+                    <button type="button" id="remove-btn-2" onclick="removeImage(1)" class="absolute top-1.5 right-1.5 w-6 h-6 bg-gray-900/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center hidden transition z-10">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -105,7 +116,6 @@
             style="width: 50%; height: 46px; padding: 0 24px;">
                 변경 취소
             </a>
-            
             <button type="submit" 
                     class="flex items-center justify-center bg-violet-600 dark:bg-indigo-600 hover:bg-violet-700 dark:hover:bg-indigo-500 text-white text-sm font-bold rounded-lg shadow-sm transition"
                     style="width: 50%; height: 46px; padding: 0 24px;">
@@ -115,5 +125,74 @@
     </form>
 </main>
 
-<script src="{% static 'deal/js/upload.js' %}?v=1.0.1"></script>
+<script>
+    const fileInput = document.getElementById('file-input');
+    const p1 = document.getElementById('preview-1');
+    const p2 = document.getElementById('preview-2');
+    const btn1 = document.getElementById('remove-btn-1');
+    const btn2 = document.getElementById('remove-btn-2');
+    const deleteFlag = document.getElementById('delete-image-flag');
+
+    let hasInitialImage = {% if goods.image %}true{% else %}false{% endif %};
+    let currentFiles = [];
+
+    fileInput.addEventListener('change', function(event) {
+        const newFiles = Array.from(event.target.files);
+        if (newFiles.length === 0) return;
+
+        newFiles.forEach(file => {
+            const totalSlots = (hasInitialImage ? 1 : 0) + currentFiles.length;
+            if (totalSlots < 2) {
+                currentFiles.push(file);
+            }
+        });
+        updateUI();
+    });
+
+    window.removeImage = function(slotIndex) {
+        if (slotIndex === 0) {
+            if (hasInitialImage) {
+                hasInitialImage = false;
+                deleteFlag.value = 'true'; // 백엔드에 기존 이미지 삭제 명령
+            } else {
+                currentFiles.shift(); 
+            }
+        } else if (slotIndex === 1) {
+            if (hasInitialImage) {
+                currentFiles.shift(); 
+            } else {
+                currentFiles.pop();
+            }
+        }
+        updateUI();
+    };
+
+    function updateUI() {
+        const dataTransfer = new DataTransfer();
+        currentFiles.forEach(file => dataTransfer.items.add(file));
+        fileInput.files = dataTransfer.files;
+
+        p1.innerHTML = '<span>미리보기 1</span>';
+        p2.innerHTML = '<span>미리보기 2</span>';
+        btn1.classList.add('hidden');
+        btn2.classList.add('hidden');
+
+        let slots = [];
+        if (hasInitialImage) {
+            slots.push(`<img src="{{ goods.image.url|default:'' }}" class="w-full h-full object-cover">`);
+        }
+        currentFiles.forEach(file => {
+            slots.push(`<img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover">`);
+        });
+
+        if (slots.length > 0) {
+            p1.innerHTML = slots[0];
+            btn1.classList.remove('hidden');
+        }
+        if (slots.length > 1) {
+            p2.innerHTML = slots[1];
+            btn2.classList.remove('hidden');
+        }
+    }
+</script>
 {% endblock %}

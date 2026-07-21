@@ -38,11 +38,10 @@
                 <div class="flex items-center gap-6">
                     <a href="/" class="text-2xl font-black text-violet-600 dark:text-indigo-400 tracking-tight">ANIVERSE</a>
                     <div class="hidden md:flex space-x-4">
-                        <a href="/" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">일러스트</a>
-                        <a href="{% url 'anime:anime_list' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">애니메이션</a>
-                        <a href="{% url 'deal:deal_board' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">거래 / 장터</a>
-                        <a href="{% url 'community:board_list' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">커뮤니티</a>
-                         <a href="{% url 'works:work_list' %}" class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white font-medium transition">창작물</a>
+                        <a href="{% url 'anime:anime_list' %}" class="font-medium transition {% if request.resolver_match.app_name == 'anime' and request.path != '/' %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white{% endif %}">애니메이션</a>
+                        <a href="{% url 'deal:deal_board' %}" class="font-medium transition {% if request.resolver_match.app_name == 'deal' %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white{% endif %}">거래 / 장터</a>
+                        <a href="{% url 'community:board_list' %}" class="font-medium transition {% if request.resolver_match.app_name == 'community' %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white{% endif %}">커뮤니티</a>
+                         <a href="{% url 'works:work_list' %}" class="font-medium transition {% if request.resolver_match.app_name == 'works' %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white{% endif %}">창작물</a>
                     </div>
                 </div>
                     
@@ -68,6 +67,16 @@
             </div>
         </div>
     </nav>
+
+    {% if messages %}
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 space-y-2">
+            {% for message in messages %}
+                <div class="px-4 py-3 rounded-xl text-sm font-medium {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800{% else %}bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 
     {% block content %}
     {% endblock %}
