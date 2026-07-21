@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Case, When, Value, IntegerField
 from django.core.paginator import Paginator
 from .models import Post, Comment
 from .forms import PostForm  # 1번에서 만든 폼 임포트
@@ -24,17 +24,24 @@ def board_list(request):
     # annotate 안에서 좋아요 개수(like_count) 뿐만 아니라 
     # 댓글 개수(comment_count)도 DB 단계에서 한꺼번에 미리 계산해옵니다.
     if board_type == 'all':
-        posts = (Post.objects.exclude(board_type='notice')
+        # 🛠️ 수정: .exclude(board_type='notice')를 제거하여 전체 게시판에 공지사항을 포함시킵니다.
+        # ⭐️ 추가: Case-When 문을 사용해 공지사항(notice) 글이 무조건 리스트 최상단에 오도록 정렬 점수(priority)를 부여합니다.
+        posts = (Post.objects.all()
                  .annotate(
                      like_count=Count('likes', distinct=True),
-                     comment_count=Count('comments', distinct=True) # 👈 댓글 수 추가!
+                     comment_count=Count('comments', distinct=True),
+                     priority=Case(
+                         When(board_type='notice', then=Value(0)),
+                         default=Value(1),
+                         output_field=IntegerField(),
+                     )
                  )
-                 .order_by('-created_at'))
+                 .order_by('priority', '-created_at')) # 공지사항 우선 정렬 후, 최신순 정렬
     else:
         posts = (Post.objects.filter(board_type=board_type)
                  .annotate(
                      like_count=Count('likes', distinct=True),
-                     comment_count=Count('comments', distinct=True) # 👈 댓글 수 추가!
+                     comment_count=Count('comments', distinct=True)
                  )
                  .order_by('-created_at'))
         
@@ -55,7 +62,7 @@ def board_list(request):
     notices = (Post.objects.filter(board_type='notice')
                .annotate(
                    like_count=Count('likes', distinct=True),
-                   comment_count=Count('comments', distinct=True) # 👈 공지사항 댓글 수 추가!
+                   comment_count=Count('comments', distinct=True)
                )
                .order_by('-created_at')[:3])
 
@@ -85,7 +92,7 @@ def post_detail(request, pk):
             return redirect('login') # 혹은 로그인 페이지 url
             
         comment_form = CommentForm(request.POST)
-        if comment_form.is_valid(): # 👈 오타 수정 (is_vaild -> is_valid)
+        if comment_form.is_valid():
             comment = comment_form.save(commit=False)
             comment.post = post
             comment.author = request.user
@@ -97,7 +104,6 @@ def post_detail(request, pk):
                 comment.parent_comment = parent_comment
                 
             comment.save()
-            # 👈 리다이렉트 경로를 네임스페이스 규칙('community:post_detail')에 맞게 변경
             return redirect('community:post_detail', pk=post.id)
     else:
         comment_form = CommentForm()
@@ -107,7 +113,6 @@ def post_detail(request, pk):
         'comments': comments,
         'comment_form': comment_form,
     }
-    # 👈 템플릿 경로를 다른 뷰들과 일관되게 'community/detail.html'로 통일했습니다.
     return render(request, 'community/detail.html', context)
 
 
@@ -149,3 +154,60 @@ def post_like(request, pk):
         
     # 추천을 완료한 후 다시 해당 게시글 상세 페이지(detail)로 이동합니다.
     return redirect('community:post_detail', pk=post.pk)
+
+
+# ----------------------------------------------------
+# 💡 새롭게 추가된 기능: 게시글 수정 & 삭제 뷰 함수
+# ----------------------------------------------------
+
+@login_required
+def post_delete(request, pk):
+    """게시글 삭제 기능"""
+    post = get_object_or_404(Post, pk=pk)
+    
+    # 본인이 작성한 글만 삭제 가능하도록 제한
+    if request.user != post.author:
+        messages.error(request, '본인이 작성한 글만 삭제할 수 있습니다.')
+        return redirect('community:post_detail', pk=post.pk)
+        
+    post.delete()
+    messages.success(request, '게시글이 성공적으로 삭제되었습니다.')
+    return redirect('community:board_list')
+
+
+@login_required
+def post_edit(request, pk):
+    """게시글 수정 기능 (수정 오류 해결을 위해 100% 직관적인 데이터 매핑으로 강제 변환)"""
+    post = get_object_or_404(Post, pk=pk)
+    
+    if request.user != post.author:
+        messages.error(request, '본인이 작성한 글만 수정할 수 있습니다.')
+        return redirect('community:post_detail', pk=post.pk)
+        
+    if request.method == 'POST':
+        post.board_type = request.POST.get('board_type')
+        post.title = request.POST.get('title')
+        post.content = request.POST.get('content')
+        
+        # 새로운 이미지 파일이 업로드된 경우 교체
+        if request.FILES.get('image'):
+            post.image = request.FILES.get('image')
+            
+        # ❌ 유저가 [X] 버튼을 눌러 기존 이미지를 지운 경우의 예외 처리
+        if request.POST.get('clear_image') == 'true':
+            if post.image:
+                post.image.delete(save=False) 
+            post.image = None
+
+        post.save()  # 👈 수정한 데이터들이 데이터베이스에 완벽하게 확정 반영됩니다.
+        messages.success(request, '게시글이 성공적으로 수정되었습니다.')
+        return redirect('community:post_detail', pk=post.pk)
+        
+    else:
+        form = PostForm(instance=post)
+        
+    return render(request, 'community/post_form.html', {
+        'form': form, 
+        'post': post,  
+        'is_edit': True
+    })

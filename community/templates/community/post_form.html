@@ -1,13 +1,20 @@
 {% extends 'base.html' %}
 {% block content %}
 
+<!-- 💡 SweetAlert2 라이브러리를 블록 안쪽으로 이동하여 확실하게 로드합니다 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <!-- 장고 CKEditor 렌더링에 필요한 자바스크립트 소스 파일 로드 -->
 {{ form.media }}
 
 <div class="max-w-4xl mx-auto px-4 py-10">
     <div class="mb-8 border-b border-gray-200 dark:border-gray-700 pb-6">
-        <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">커뮤니티 글쓰기</h2>
-        <p class="text-gray-500 dark:text-gray-400 mt-2">당신의 의견이나 질문을 자유롭게 공유해 주세요.</p>
+        <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+            {% if form.instance.pk %}커뮤니티 글 수정{% else %}커뮤니티 글쓰기{% endif %}
+        </h2>
+        <p class="text-gray-500 dark:text-gray-400 mt-2">
+            {% if form.instance.pk %}작성하신 내용을 수정합니다.{% else %}당신의 의견이나 질문을 자유롭게 공유해 주세요.{% endif %}
+        </p>
     </div>
     
     <form method="post" enctype="multipart/form-data" class="space-y-6" id="post-form">
@@ -22,35 +29,54 @@
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">카테고리</label>
                     <select name="board_type" required
                         class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block dark:bg-gray-700 transition cursor-pointer">
-                        <option value="" selected disabled>카테고리를 선택하세요</option>
+                        <option value="" disabled {% if not form.instance.board_type %}selected{% endif %}>카테고리를 선택하세요</option>
                         {% if user.is_staff %}
-                        <option value="notice">공지 사항</option>
+                        <option value="notice" {% if form.instance.board_type == 'notice' %}selected{% endif %}>공지 사항</option>
                         {% endif %}
-                        <option value="qna">질문 답변</option>
-                        <option value="free">자유 게시판</option>
-                        <option value="info">정보 공유</option>
+                        <option value="qna" {% if form.instance.board_type == 'qna' %}selected{% endif %}>질문 답변</option>
+                        <option value="free" {% if form.instance.board_type == 'free' %}selected{% endif %}>자유 게시판</option>
+                        <option value="info" {% if form.instance.board_type == 'info' %}selected{% endif %}>정보 공유</option>
                     </select>
                 </div>
 
                 <!-- 제목 입력창 -->
                 <div class="flex-grow">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">질문 / 제목</label>
-                    <input type="text" name="title" placeholder="제목을 입력하세요" 
+                    <input type="text" name="title" value="{{ form.instance.title|default:'' }}" placeholder="제목을 입력하세요" required
                         class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block dark:bg-gray-700 transition">
                 </div>
                 
-                <!-- 파일 첨부 -->
-                <div class="flex-shrink-0 w-full md:w-auto">
+                <!-- 파일 첨부 및 기존 이미지 미리보기 단추 -->
+                <div class="flex-shrink-0 w-full md:w-auto relative">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">이미지 첨부</label>
-                    <input type="file" name="image" 
-                        class="block w-full text-sm text-gray-500 dark:text-gray-400
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-full file:border-0
-                        file:text-xs file:font-bold
-                        file:bg-purple-50 file:text-purple-700
-                        dark:file:bg-purple-900/30 dark:file:text-purple-300
-                        hover:file:bg-purple-100 dark:hover:file:bg-purple-900/50
-                        cursor-pointer border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
+                    
+                    <div class="flex items-center gap-2">
+                        {% if form.instance.image %}
+                        <!-- 💡 overflow-hidden을 지우고, 마진(mr-2)을 줘서 버튼이 옆 칸과 안 겹치게 여유 공간을 둡니다 -->
+                        <div id="existing-image-box" class="relative flex-shrink-0 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 p-0.5 dark:bg-gray-900 mr-2">
+                            <!-- 이미지가 둥글게 잘리도록 여기에만 rounded를 확실히 줍니다 -->
+                            <img src="{{ form.instance.image.url }}" alt="기존 이미지" class="w-10 h-10 object-contain rounded-md">
+                            
+                            <!-- ❌ 크기를 w-5 h-5로 키우고, -top-2 -right-2로 테두리 바깥에 완전히 걸치게 수정 -->
+                            <button type="button" onclick="clearExistingImage()"
+                                class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-extrabold shadow-md transition z-10">
+                                ✕
+                            </button>
+                        </div>
+                        <!-- 백엔드 view로 이미지 해제 플래그를 넘길 hidden input -->
+                        <input type="hidden" name="clear_image" id="clear-image-trigger" value="false">
+                        {% endif %}
+
+                        <input type="file" name="image" id="id_image" onchange="handleFileChange(this)"
+                            class="block w-full text-sm text-gray-500 dark:text-gray-400
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-full file:border-0
+                            file:text-xs file:font-bold
+                            file:bg-purple-50 file:text-purple-700
+                            dark:file:bg-purple-900/30 dark:file:text-purple-300
+                            hover:file:bg-purple-100 dark:hover:file:bg-purple-900/50
+                            cursor-pointer border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
+                    </div>
                 </div>
             </div>
         </div>
@@ -58,24 +84,84 @@
         <!-- 2. 내용 섹션 (CKEditor 렌더링 영역) -->
         <div class="p-5 border border-gray-100 dark:border-gray-700 rounded-2xl bg-white dark:bg-gray-800 shadow-sm">
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">내용</label>
-            
-            <!-- django-ckeditor widget 폼 출력 -->
             <div class="django-ckeditor-wrapper">
                 {{ form.content }}
             </div>
         </div>
 
-        <!-- 3. 하단 등록 버튼 영역 -->
-        <div class="flex justify-end pt-4 pb-12">
+        <!-- 3. 하단 취소 / 등록 버튼 영역 -->
+        <div class="flex justify-end gap-3 pt-4 pb-12">
+            <a href="javascript:history.back();" class="px-8 py-3.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition text-sm">
+                취소
+            </a>
             <button type="submit" class="px-10 py-3.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-md hover:shadow-lg transform hover:-translate-y-0.5 dark:text-white block">
-                등록하기
+                {% if form.instance.pk %}수정 완료{% else %}등록하기{% endif %}
             </button>
         </div>
     </form>
 </div>
 
-<!-- 테일윈드 다크모드 등 기본 에디터 스타일을 잡아주기 위한 소소한 CSS 튜닝 -->
+<!-- 스크립트 기능 제어 -->
+<script>
+function clearExistingImage() {
+    Swal.fire({
+        title: '기존 첨부 이미지를 삭제하시겠습니까?',
+        text: "글 저장 시 최종 반영됩니다.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#a1a1aa',
+        confirmButtonText: '확인',
+        cancelButtonText: '취소',
+        reverseButtons: true,
+        // SweetAlert2 팝업 내부의 타이틀과 아이콘에 커스텀 클래스 주입
+        customClass: {
+            title: 'swal-custom-title',
+            icon: 'swal-custom-icon'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const imageBox = document.getElementById('existing-image-box');
+            if (imageBox) imageBox.classList.add('hidden');
+            
+            const trigger = document.getElementById('clear-image-trigger');
+            if (trigger) trigger.value = 'true';
+        }
+    });
+}
+
+function handleFileChange(input) {
+    if (input.files && input.files[0]) {
+        const imageBox = document.getElementById('existing-image-box');
+        if (imageBox) imageBox.classList.add('hidden');
+        
+        const trigger = document.getElementById('clear-image-trigger');
+        if (trigger) trigger.value = 'true';
+    }
+}
+</script>
+
+<!-- 테일윈드 다크모드 및 모달 팝업 스타일 커스텀 -->
 <style>
+    /* 팝업 제목 글씨 크기 줄여서 한 줄로 맞추기 */
+    .swal-custom-title {
+        font-size: 1.4rem !important;
+        font-weight: 700 !important;
+        padding-top: 10px !important;
+    }
+    
+    /* 거대했던 주황색 경고 아이콘 크기 아담하게 조절 */
+    .swal-custom-icon {
+        width: 4rem !important;
+        height: 4rem !important;
+        min-width: 4rem !important;
+        margin-top: 20px !important;
+    }
+    .swal2-icon.swal2-warning .swal2-icon-content {
+        font-size: 2.5rem !important;
+    }
+
+    /* 기존 에디터 스타일 유지 */
     .django-ckeditor-wrapper .django-ckeditor-widget {
         width: 100% !important;
     }
