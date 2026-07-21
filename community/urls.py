@@ -17,4 +17,8 @@ urlpatterns = [
     path('<int:pk>/like/', views.post_like, name='post_like'),
     path('post/<int:pk>/delete/', views.post_delete, name='post_delete'),
     path('post/<int:pk>/edit/', views.post_edit, name='post_edit'),
+
+    # 추가된 댓글 수정 및 삭제 URL 패턴
+    path('comment/<int:comment_id>/edit/', views.comment_edit, name='comment_edit'),
+    path('comment/<int:comment_id>/delete/', views.comment_delete, name='comment_delete'),
 ]

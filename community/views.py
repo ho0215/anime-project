@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Count, Q, Case, When, Value, IntegerField
 from django.core.paginator import Paginator
+from django.core.exceptions import PermissionDenied
 from .models import Post, Comment
 from .forms import PostForm  # 1번에서 만든 폼 임포트
 from .forms import CommentForm
@@ -60,11 +61,11 @@ def board_list(request):
 
     # 공지사항 목록에도 좋아요 개수와 댓글 수를 똑같이 계산해서 넘깁니다.
     notices = (Post.objects.filter(board_type='notice')
-               .annotate(
-                   like_count=Count('likes', distinct=True),
-                   comment_count=Count('comments', distinct=True)
-               )
-               .order_by('-created_at')[:3])
+                .annotate(
+                    like_count=Count('likes', distinct=True),
+                    comment_count=Count('comments', distinct=True)
+                )
+                .order_by('-created_at')[:3])
 
     return render(request, 'community/list.html', {
         'posts': page_obj,          # 기존 쿼리셋 대신 페이징 객체(page_obj)를 넘겨줍니다.
@@ -211,3 +212,42 @@ def post_edit(request, pk):
         'post': post,  
         'is_edit': True
     })
+
+
+# ----------------------------------------------------
+# 💡 새로 추가된 기능: 댓글 수정 & 삭제 뷰 함수
+# ----------------------------------------------------
+
+@login_required(login_url='accounts:login')
+def comment_edit(request, comment_id):
+    """댓글 수정 기능"""
+    comment = get_object_or_404(Comment, id=comment_id)
+    
+    # 작성자 본인만 수정 가능
+    if comment.author != request.user:
+        raise PermissionDenied
+        
+    if request.method == 'POST':
+        content = request.POST.get('content')
+        if content:
+            comment.content = content
+            comment.is_updated = True  # 템플릿의 (수정됨) 표시와 연동
+            comment.save()
+            messages.success(request, '댓글이 수정되었습니다.')
+            
+    return redirect('community:post_detail', pk=comment.post.pk)
+
+
+@login_required(login_url='accounts:login')
+def comment_delete(request, comment_id):
+    """댓글 삭제 기능 (본인 또는 관리자만 삭제 가능)"""
+    comment = get_object_or_404(Comment, id=comment_id)
+    post_pk = comment.post.pk
+    
+    # 작성자 본인이거나 관리자(superuser, staff)인 경우에만 삭제 허용
+    if comment.author != request.user and not request.user.is_superuser and not request.user.is_staff:
+        raise PermissionDenied
+        
+    comment.delete()
+    messages.success(request, '댓글이 삭제되었습니다.')
+    return redirect('community:post_detail', pk=post_pk)        

@@ -46,6 +46,9 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # 💡 [추가] 댓글이 수정되었는지 여부를 체크하는 필드 ('수정됨' 표시에 사용)
+    is_updated = models.BooleanField(default=False)
+    
     # ★ 5. 대댓글 구현을 위한 핵심 필드 (자기 자신을 참조)
     # null=True, blank=True 여야 '원댓글'이 존재할 수 있습니다.
     parent_comment = models.ForeignKey(
