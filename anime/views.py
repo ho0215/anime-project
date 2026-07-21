@@ -8,6 +8,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
 from .models import Anime, Review
+from community.models import Post
+from works.models import CreativeWork
+from deal.models import Goods
 
 def anime_list(request):
     query = request.GET.get('q', '').strip()
@@ -100,12 +103,24 @@ def home(request):
     # 4. 오늘의 추천 애니 (랜덤으로 10개 섞어서 가져오기)
     random_picks = Anime.objects.all().order_by('?')[:10]
 
+    # 5. 커뮤니티 최신 글 (공지 제외, 최신순 5개)
+    recent_posts = Post.objects.exclude(board_type='notice').select_related('author').order_by('-created_at')[:5]
+
+    # 6. 창작물 신작 (공개된 것만, 최신순 8개)
+    recent_works = CreativeWork.objects.filter(is_public=True, status='published').order_by('-created_at')[:8]
+
+    # 7. 거래장터 신규 굿즈 (판매중인 것만, 최신순 8개)
+    recent_goods = Goods.objects.filter(status='sale').order_by('-created_at')[:8]
+
     # 🔥 home.html에서 main.html로 수정 완료
     return render(request, 'anime/main.html', {
         'top_rated': top_rated,
         'action_fantasy': action_fantasy,
         'romance': romance,
         'random_picks': random_picks,
+        'recent_posts': recent_posts,
+        'recent_works': recent_works,
+        'recent_goods': recent_goods,
     })
 
 def anime_detail(request, pk):

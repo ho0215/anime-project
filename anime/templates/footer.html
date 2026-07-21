@@ -1,0 +1,36 @@
+<!-- 푸터 예시: 필요한 대로 수정해서 쓰세요. 다른 페이지에도 넣고 싶으면 해당 템플릿에 include 태그로 이 파일을 불러오면 됩니다. -->
+<footer class="mt-32 bg-violet-700 dark:bg-violet-950">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
+            <div>
+                <span class="text-xl font-black text-white">ANIVERSE</span>
+                <p class="text-sm text-violet-100 mt-2 max-w-xs">
+                    애니메이션과 게임, 그리고 팬들의 2차 창작을 한곳에서 즐기는 서브컬처 플랫폼입니다.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-8 text-sm">
+                <div>
+                    <h4 class="font-bold text-white mb-3">바로가기</h4>
+                    <ul class="space-y-2 text-violet-100">
+                        <li><a href="{% url 'anime:anime_list' %}" class="hover:text-white transition">애니메이션</a></li>
+                        <li><a href="{% url 'deal:deal_board' %}" class="hover:text-white transition">거래 / 장터</a></li>
+                        <li><a href="{% url 'community:board_list' %}" class="hover:text-white transition">커뮤니티</a></li>
+                        <li><a href="{% url 'works:work_list' %}" class="hover:text-white transition">창작물</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-3">계정</h4>
+                    <ul class="space-y-2 text-violet-100">
+                        <li><a href="{% url 'accounts:login' %}" class="hover:text-white transition">로그인</a></li>
+                        <li><a href="{% url 'accounts:signup' %}" class="hover:text-white transition">회원가입</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-10 pt-6 border-t border-violet-500/40 text-xs text-violet-200">
+            &copy; 2026 ANIVERSE. 깃옵스 프로젝트로 제작된 서브컬쳐 커뮤니티 사이트입니다.
+        </div>
+    </div>
+</footer>
