@@ -1,0 +1,53 @@
+<!-- comment_item.html -->
+{% if comment.parent %}
+<!-- 대댓글 스타일인 경우 -->
+<div id="comment-wrapper-{{ comment.id }}" class="flex gap-3">
+    <span class="text-purple-400 dark:text-purple-600 mt-0.5 font-bold">↳</span>
+    <div class="flex-1">
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-purple-100/50 dark:bg-purple-950/40 flex items-center justify-center text-[10px] font-bold text-purple-600 dark:text-purple-300">
+                    {{ comment.author.username|slice:":1"|upper }}
+                </div>
+                <span class="text-xs font-bold text-gray-900 dark:text-white">{{ comment.author.username }}</span>
+                <span class="text-[10px] text-gray-400">{{ comment.created_at|date:"Y-m-d H:i" }}</span>
+                <span id="updated-badge-{{ comment.id }}" class="text-[10px] text-gray-400 dark:text-gray-500 hidden">(수정됨)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleEditForm('{{ comment.id }}')" class="text-[11px] font-semibold text-gray-500 hover:text-purple-600 transition">수정</button>
+                <a href="javascript:void(0);" onclick="confirmCommentDelete(event, '{% url \'community:comment_delete\' comment.id %}', '{{ comment.id }}')" class="text-[11px] font-semibold text-red-500 hover:text-red-700 transition">삭제</a>
+            </div>
+        </div>
+        <div id="comment-content-{{ comment.id }}">
+            <p class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-line pl-8">{{ comment.content }}</p>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- 원댓글 스타일인 경우 -->
+<div id="comment-wrapper-{{ comment.id }}" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+    <div class="p-5">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center text-xs font-bold text-purple-600 dark:text-purple-400">
+                    {{ comment.author.username|slice:":1"|upper }}
+                </div>
+                <span class="text-sm font-bold text-gray-900 dark:text-white">{{ comment.author.username }}</span>
+                <span class="text-xs text-gray-400">{{ comment.created_at|date:"Y-m-d H:i" }}</span>
+                <span id="updated-badge-{{ comment.id }}" class="text-[10px] text-gray-400 dark:text-gray-500 hidden">(수정됨)</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="toggleEditForm('{{ comment.id }}')" class="text-xs font-semibold text-gray-500 hover:text-purple-600 transition">수정</button>
+                <a href="javascript:void(0);" onclick="confirmCommentDelete(event, '{% url \'community:comment_delete\' comment.id %}', '{{ comment.id }}')" class="text-xs font-semibold text-red-500 hover:text-red-700 transition">삭제</a>
+                <button onclick="toggleReplyForm('{{ comment.id }}')" class="text-xs font-semibold text-gray-500 hover:text-purple-600 transition">답글 달기</button>
+            </div>
+        </div>
+        <div id="comment-content-{{ comment.id }}">
+            <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line pl-9">{{ comment.content }}</p>
+        </div>
+
+        <!-- 대댓글 폼생성 부분 생략 가능(새로 생긴 객체이므로 일단 필요시 재조정) -->
+    </div>
+    <div id="replies-container-{{ comment.id }}" class="bg-gray-50/50 dark:bg-gray-900/20 border-t border-dashed border-gray-100 dark:border-gray-700 p-5 space-y-4 hidden"></div>
+</div>
+{% endif %}

@@ -6,6 +6,8 @@ from django.core.paginator import Paginator
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone  # 💡 추가: 실시간 기준 계산을 위해 임포트
 from datetime import timedelta     # 💡 추가: 24시간 범위 계산을 위해 임포트
+from django.http import JsonResponse # 💡 추가: 새로고침 없는 AJAX(Fetch) 통신을 위한 임포트
+from django.template.loader import render_to_string # 💡 추가: HTML 조각 렌더링을 위해 임포트
 from .models import Post, Comment
 from .forms import PostForm  # 1번에서 만든 폼 임포트
 from .forms import CommentForm
@@ -74,7 +76,6 @@ def board_list(request):
     time_threshold = timezone.now() - timedelta(hours=24)
     
     # 1. 실시간 베스트: 최근 24시간 내 글 중 조회수(view_count) 순 정렬 (5개)
-    # (만약 view_count가 모델에 없다면 -like_count로 변경 가능)
     realtime_best = (Post.objects.filter(created_at__gte=time_threshold)
                      .annotate(comment_count=Count('comments', distinct=True))
                      .order_by('-view_count')[:5])
@@ -85,7 +86,6 @@ def board_list(request):
                       .order_by('-comment_count')[:5])
     
     # 3. 답변을 기다려요: 카테고리가 '질문'(혹은 qna)이면서 댓글이 0개인 최신글 (5개)
-    # (모델의 질문 카테고리 명이 '질문'인지 'qna'인지 확인 후 맞춰주세요)
     waiting_questions = (Post.objects.filter(board_type='질문')
                          .annotate(comment_count=Count('comments', distinct=True))
                          .filter(comment_count=0)
@@ -109,30 +109,59 @@ def board_list(request):
 def post_detail(request, pk):
     post = get_object_or_404(Post, pk=pk)
     
-    # 조회수 증가
-    post.view_count += 1 
-    post.save()
+    # 💡 비동기(Fetch) 댓글 등록 요청일 경우 조회수를 증가시키지 않음
+    if request.method == 'GET':
+        post.view_count += 1 
+        post.save()
 
     # 대댓글이 아닌 원댓글만 1차로 가져오기
     comments = post.comments.filter(parent_comment__isnull=True)
     
     if request.method == 'POST':
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
+        
+        # 1. 로그인 인증 확인
         if not request.user.is_authenticated:
+            if is_ajax:
+                return JsonResponse({'error': 'unauthenticated'}, status=401)
             return redirect('login') 
             
-        comment_form = CommentForm(request.POST)
-        if comment_form.is_valid():
-            comment = comment_form.save(commit=False)
-            comment.post = post
-            comment.author = request.user
-            
-            parent_id = request.POST.get('parent_id')
-            if parent_id:
-                parent_comment = get_object_or_404(Comment, pk=parent_id)
-                comment.parent_comment = parent_comment
-                
-            comment.save()
+        # 2. 💡 [핵심 수정] 검증 에러를 유발하는 Form을 사용하지 않고 POST 데이터를 직접 수집
+        content = request.POST.get('content', '').strip()
+        parent_id = request.POST.get('parent_id')
+        
+        if not content:
+            if is_ajax:
+                return JsonResponse({'status': 'fail', 'message': '내용을 입력해주세요.'}, status=400)
             return redirect('community:post_detail', pk=post.id)
+            
+        # 3. 모델에 직접 값 대입 후 저장
+        comment = Comment()
+        comment.post = post
+        comment.author = request.user
+        comment.content = content
+        
+        if parent_id:
+            parent_comment = get_object_or_404(Comment, pk=parent_id)
+            comment.parent_comment = parent_comment
+            
+        comment.save()
+        
+        # 4. 비동기 요청 분기 처리
+        if is_ajax:
+            # 렌더링 시 request 객체를 전달하여 템플릿 내 권한 분기({% if request.user == ... %}) 정상 동작 보장
+            comment_html = render_to_string('community/comment_item.html', {
+                'comment': comment, 
+                'user': request.user,
+                'request': request
+            })
+            return JsonResponse({
+                'status': 'success',
+                'comment_html': comment_html,
+                'total_comments': post.comments.count()
+            })
+            
+        return redirect('community:post_detail', pk=post.id)
     else:
         comment_form = CommentForm()
         
@@ -174,10 +203,15 @@ def post_like(request, pk):
     
     if post.likes.filter(id=request.user.id).exists():
         post.likes.remove(request.user)
+        liked = False
     else:
         post.likes.add(request.user)
+        liked = True
         
-    return redirect('community:post_detail', pk=post.pk)
+    return JsonResponse({
+        'liked': liked,
+        'like_count': post.likes.count()
+    })
 
 
 @login_required
@@ -244,6 +278,14 @@ def comment_edit(request, comment_id):
             comment.content = content
             comment.is_updated = True 
             comment.save()
+            
+            # 💡 비동기(AJAX) 요청일 경우 JSON 응답 반환
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'success',
+                    'content': comment.content
+                })
+                
             messages.success(request, '댓글이 수정되었습니다.')
             
     return redirect('community:post_detail', pk=comment.post.pk)
@@ -253,11 +295,19 @@ def comment_edit(request, comment_id):
 def comment_delete(request, comment_id):
     """댓글 삭제 기능"""
     comment = get_object_or_404(Comment, id=comment_id)
-    post_pk = comment.post.pk
+    post = comment.post
     
     if comment.author != request.user and not request.user.is_superuser and not request.user.is_staff:
         raise PermissionDenied
         
     comment.delete()
+    
+    # 💡 비동기(AJAX) 요청일 경우 새로고침 대신 남은 전체 댓글 수 JSON 반환
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({
+            'status': 'success',
+            'total_comments': post.comments.count()
+        })
+        
     messages.success(request, '댓글이 삭제되었습니다.')
-    return redirect('community:post_detail', pk=post_pk)
+    return redirect('community:post_detail', pk=post.pk)
