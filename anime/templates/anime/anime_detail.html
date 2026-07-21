@@ -15,7 +15,8 @@
 <div class="max-w-6xl mx-auto px-4 -mt-32 md:-mt-48 relative z-10 pb-20">
     
     <div class="mb-6">
-        <a href="javascript:history.back()" class="inline-flex items-center text-gray-800 dark:text-white/80 hover:text-purple-600 dark:hover:text-white font-bold transition drop-shadow-md">
+        <!-- 🔥 수정됨: 다크/라이트 모드 상관없이 항상 선명한 흰색 (text-white) 유지 -->
+        <a href="javascript:history.back()" class="inline-flex items-center text-white hover:text-white/80 font-bold transition drop-shadow-md">
             <span class="mr-2 text-xl">←</span> 목록으로 돌아가기
         </a>
     </div>
@@ -39,7 +40,7 @@
                 {% endif %}
             </div>
             
-            <!-- 🔥 라이트모드: 검은색(text-gray-900) / 다크모드: 흰색(dark:text-white) -->
+            <!-- 라이트모드: 검은색(text-gray-900) / 다크모드: 흰색(dark:text-white) -->
             <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-2 drop-shadow-sm md:drop-shadow-lg">
                 {{ anime.title }}
             </h2>
