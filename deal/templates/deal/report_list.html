@@ -40,12 +40,19 @@
                         <td class="px-6 py-4 text-center text-gray-500">{{ report.reporter.username }}</td>
                         <td class="px-6 py-4 text-center text-gray-400">{{ report.created_at|date:"Y-m-d H:i" }}</td>
                         <td class="px-6 py-4 text-center">
-                            <select id="goods-report-status-{{ report.id }}" onchange="updateReportStatus('goods', {{ report.id }})"
+                            <select id="goods-report-status-{{ report.id }}" onchange="onReportStatusChange('goods', {{ report.id }})"
                                     class="text-xs font-bold bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 focus:outline-none">
                                 {% for value, label in status_choices %}
                                     <option value="{{ value }}" {% if report.status == value %}selected{% endif %}>{{ label }}</option>
                                 {% endfor %}
                             </select>
+                        </td>
+                    </tr>
+                    <tr id="goods-report-note-wrap-{{ report.id }}" class="{% if report.status != 'rejected' %}hidden{% endif %}">
+                        <td colspan="5" class="px-6 py-3 bg-gray-50/70 dark:bg-gray-900/40">
+                            <textarea id="goods-report-note-{{ report.id }}" rows="2" placeholder="반려 사유를 입력하세요"
+                                      onblur="submitReportUpdate('goods', {{ report.id }})"
+                                      class="w-full px-4 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-red-400 dark:focus:border-red-500 text-gray-900 dark:text-white">{{ report.admin_note }}</textarea>
                         </td>
                     </tr>
                     {% empty %}
@@ -80,12 +87,19 @@
                         <td class="px-6 py-4 text-center text-gray-500">{{ report.reporter.username }}</td>
                         <td class="px-6 py-4 text-center text-gray-400">{{ report.created_at|date:"Y-m-d H:i" }}</td>
                         <td class="px-6 py-4 text-center">
-                            <select id="user-report-status-{{ report.id }}" onchange="updateReportStatus('user', {{ report.id }})"
+                            <select id="user-report-status-{{ report.id }}" onchange="onReportStatusChange('user', {{ report.id }})"
                                     class="text-xs font-bold bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 focus:outline-none">
                                 {% for value, label in status_choices %}
                                     <option value="{{ value }}" {% if report.status == value %}selected{% endif %}>{{ label }}</option>
                                 {% endfor %}
                             </select>
+                        </td>
+                    </tr>
+                    <tr id="user-report-note-wrap-{{ report.id }}" class="{% if report.status != 'rejected' %}hidden{% endif %}">
+                        <td colspan="5" class="px-6 py-3 bg-gray-50/70 dark:bg-gray-900/40">
+                            <textarea id="user-report-note-{{ report.id }}" rows="2" placeholder="반려 사유를 입력하세요"
+                                      onblur="submitReportUpdate('user', {{ report.id }})"
+                                      class="w-full px-4 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-red-400 dark:focus:border-red-500 text-gray-900 dark:text-white">{{ report.admin_note }}</textarea>
                         </td>
                     </tr>
                     {% empty %}
@@ -98,12 +112,38 @@
 </main>
 
 <script>
-function updateReportStatus(reportType, reportId) {
+function onReportStatusChange(reportType, reportId) {
     const select = document.getElementById(`${reportType}-report-status-${reportId}`);
+    const noteWrap = document.getElementById(`${reportType}-report-note-wrap-${reportId}`);
+    const note = document.getElementById(`${reportType}-report-note-${reportId}`);
     const status = select.value;
+
+    if (status === 'rejected') {
+        // 반려를 선택하면 사유 입력칸을 보여주고, 이미 사유가 있으면 바로 저장, 없으면 입력을 기다립니다.
+        noteWrap.classList.remove('hidden');
+        note.focus();
+        if (note.value.trim()) {
+            submitReportUpdate(reportType, reportId);
+        }
+    } else {
+        noteWrap.classList.add('hidden');
+        submitReportUpdate(reportType, reportId);
+    }
+}
+
+function submitReportUpdate(reportType, reportId) {
+    const select = document.getElementById(`${reportType}-report-status-${reportId}`);
+    const note = document.getElementById(`${reportType}-report-note-${reportId}`);
+    const status = select.value;
+
+    // 반려인데 사유가 아직 없으면 저장하지 않고 입력을 기다립니다.
+    if (status === 'rejected' && !note.value.trim()) {
+        return;
+    }
 
     const formData = new FormData();
     formData.append('status', status);
+    formData.append('admin_note', status === 'rejected' ? note.value.trim() : '');
 
     fetch(`/deal/reports/${reportType}/${reportId}/status-ajax/`, {
         method: 'POST',

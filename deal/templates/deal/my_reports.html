@@ -34,6 +34,9 @@
                                 {% else %}bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300{% endif %}">
                                 {{ report.get_status_display }}
                             </span>
+                            {% if report.status == 'rejected' and report.admin_note %}
+                                <p class="text-xs text-gray-400 mt-1">반려 사유: {{ report.admin_note }}</p>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -69,6 +72,9 @@
                                 {% else %}bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300{% endif %}">
                                 {{ report.get_status_display }}
                             </span>
+                            {% if report.status == 'rejected' and report.admin_note %}
+                                <p class="text-xs text-gray-400 mt-1">반려 사유: {{ report.admin_note }}</p>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
