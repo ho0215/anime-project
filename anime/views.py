@@ -1,12 +1,10 @@
+import json
 import requests
-from django.shortcuts import render, get_object_or_404, redirect
-from django.core.paginator import Paginator
-from django.db.models import Q
-from .models import Anime, Review 
-import requests
+from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
+from google import genai
 from .models import Anime, Review
 
 def anime_list(request):
@@ -48,29 +46,17 @@ def anime_list(request):
     else:
         base_qs = Anime.objects.all()
 
-    # 🔥 변수 이름을 anime_list 에서 animes 로 변경하여 충돌을 방지했습니다.
     if sort == 'popular':
-        # 인기순: 리뷰가 많은 순서 (리뷰 개수가 같으면 평점 높은 순)
         animes = base_qs.annotate(review_count=Count('reviews')).order_by('-review_count', '-score')
     elif sort == 'date_desc':
-        # 최신순: 방영일이 최근인 순서 (내림차순)
         animes = base_qs.order_by('-first_air_date')
     elif sort == 'date_asc':
-        # 과거순: 방영일이 오래된 순서 (오름차순)
         animes = base_qs.order_by('first_air_date')
     elif sort == 'score':
-        # ⭐ 별점순 (TMDB에서 가져온 DB 평점순)
-        # 평점이 높은 순서대로 정렬하되, 평점이 같으면 최신 방영일 순으로 보여줍니다.
         animes = base_qs.order_by('-score', '-first_air_date')
-        
-        # 💡 [참고] 만약 TMDB 평점이 아니라, 
-        # "우리 사이트 회원들이 남긴 리뷰(Review) 별점의 평균"으로 정렬하고 싶다면 위 코드를 지우고 아래 코드를 쓰세요!
-        # animes = base_qs.annotate(avg_score=Avg('reviews__score')).order_by('-avg_score', '-first_air_date')
     else:
-        # 기본값 (버튼을 누르지 않았을 때도 별점순 적용)
         animes = base_qs.order_by('-score', '-first_air_date')
 
-    # 페이지네이션에 animes 를 넣어줍니다.
     paginator = Paginator(animes, 16)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -82,25 +68,20 @@ def anime_list(request):
     })
 
 def home(request):
-    # 1. 역대 최고 평점 명작 (평점이 높은 순서대로 10개)
     top_rated = Anime.objects.all().order_by('-score')[:10]
     
-    # 2. 액션 & 판타지 몰아보기 (줄거리에 특정 단어가 포함된 것만 필터링)
     action_fantasy = Anime.objects.filter(
         Q(synopsis__icontains='액션') | Q(synopsis__icontains='판타지') | 
         Q(synopsis__icontains='마법') | Q(synopsis__icontains='전투')
     ).order_by('-score')[:10]
     
-    # 3. 설레는 로맨스 & 청춘 (줄거리에 특정 단어가 포함된 것만 필터링)
     romance = Anime.objects.filter(
         Q(synopsis__icontains='사랑') | Q(synopsis__icontains='로맨스') | 
         Q(synopsis__icontains='학교') | Q(synopsis__icontains='청춘')
     ).order_by('-score')[:10]
 
-    # 4. 오늘의 추천 애니 (랜덤으로 10개 섞어서 가져오기)
     random_picks = Anime.objects.all().order_by('?')[:10]
 
-    # 🔥 home.html에서 main.html로 수정 완료
     return render(request, 'anime/main.html', {
         'top_rated': top_rated,
         'action_fantasy': action_fantasy,
@@ -115,28 +96,22 @@ def anime_detail(request, pk):
         score = request.POST.get('score')
         content = request.POST.get('content')
         if score and content:
-            # DB에 리뷰 저장
             Review.objects.create(anime=anime, score=int(score), content=content)
-            # 저장 후 새로고침 방지를 위해 상세페이지로 다시 리다이렉트
             return redirect('anime:anime_detail', pk=pk)
 
-    # TMDB API로 해당 애니메이션의 예고편(유튜브) 영상 정보만 실시간으로 가져옵니다.
     API_KEY = 'fcf1e4d2533332357dde303d1d8fcf50'
     youtube_id = None
     
     try:
-        # 1. 한국어 예고편이 있는지 먼저 검색
         video_url = f"https://api.themoviedb.org/3/tv/{anime.api_id}/videos?api_key={API_KEY}&language=ko-KR"
         response = requests.get(video_url).json()
         results = response.get('results', [])
         
-        # 2. 한국어 영상이 없으면 다국어(주로 일본어/영어) 예고편으로 대체
         if not results:
             video_url_en = f"https://api.themoviedb.org/3/tv/{anime.api_id}/videos?api_key={API_KEY}"
             response_en = requests.get(video_url_en).json()
             results = response_en.get('results', [])
         
-        # 3. 유튜브 영상 키 추출 (Trailer(예고편)를 가장 우선순위로 찾음)
         for video in results:
             if video.get('site') == 'YouTube':
                 youtube_id = video.get('key')
@@ -149,13 +124,45 @@ def anime_detail(request, pk):
 
     return render(request, 'anime/anime_detail.html', {
         'anime': anime,
-        'youtube_id': youtube_id, # 🔥 쉼표(,) 추가 완료!
+        'youtube_id': youtube_id,
         'reviews': reviews,
     })
     
 def review_delete(request, pk, review_pk):
     review = get_object_or_404(Review, pk=review_pk)
-    # 현재 로그인한 사용자가 관리자(superuser)일 때만 삭제 실행
     if request.user.is_superuser:
         review.delete()
     return redirect('anime:anime_detail', pk=pk)
+
+# ----------------------------------------------------
+# 🔥 추가된 제미나이 챗봇 API 뷰
+# ----------------------------------------------------
+def chatbot_api(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            user_message = data.get('message', '')
+
+            if not user_message:
+                return JsonResponse({'error': '메시지가 없습니다.'}, status=400)
+
+            # 서버에 등록된 GEMINI_API_KEY 환경변수를 통해 인증
+            client = genai.Client()
+            
+            # 애니메이션 사이트 콘셉트에 맞춰 프롬프트 살짝 추가 (선택사항)
+            system_instruction = """너는 ANIVERSE라는 애니메이션 추천 사이트의 친절한 AI 어시스턴트야.
+            사용자가 애니메이션을 물어보면 장점과 단점을 비교해서 설명해줘.
+            답변은 항상 존댓말로 하고, 3~4문장으로 간결하게 대답해."""
+            full_prompt = f"{system_instruction}\n\n질문: {user_message}"
+
+            response = client.models.generate_content(
+                model='gemini-3.5-flash',
+                contents=full_prompt,
+            )
+            
+            return JsonResponse({'reply': response.text})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+            
+    return JsonResponse({'error': '잘못된 요청입니다.'}, status=400)

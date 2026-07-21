@@ -1,0 +1,145 @@
+<!-- 🔥 우측 하단 플로팅 챗봇 윈도우 -->
+<div id="chatbot-window" class="hidden fixed bottom-6 right-6 w-80 sm:w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden transition-all duration-300">
+    <!-- 헤더 영역 -->
+    <div id="chatbot-header" class="bg-purple-600 px-4 py-3 flex justify-between items-center cursor-pointer select-none">
+        <span class="text-white font-bold flex items-center gap-2">🤖 ANIVERSE AI</span>
+        <div class="flex items-center gap-3">
+            <button id="chatbot-minimize" class="text-white hover:text-purple-200 focus:outline-none text-lg font-bold pb-2" title="최소화">_</button>
+            <button id="chatbot-close" class="text-white hover:text-purple-200 focus:outline-none text-lg font-bold" title="닫기">✕</button>
+        </div>
+    </div>
+
+    <!-- 본문 & 입력 영역 (최소화 시 이 부분만 숨김) -->
+    <div id="chatbot-body-container" class="flex flex-col h-[400px] transition-all duration-300">
+        <!-- 채팅 내역 -->
+        <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-50 dark:bg-gray-900">
+            <div class="text-left">
+                <span class="inline-block bg-purple-100 dark:bg-purple-900/60 text-purple-900 dark:text-purple-100 px-4 py-2 rounded-2xl text-sm shadow-sm">
+                    안녕하세요! ANIVERSE 봇입니다. 어떤 것이 궁금하신가요? 🤖
+                </span>
+            </div>
+        </div>
+
+        <!-- 메시지 입력창 -->
+        <div class="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex gap-2">
+            <input type="text" id="chat-input" class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-transparent rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-gray-900 dark:text-white" placeholder="메시지 입력...">
+            <button id="send-btn" class="bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-purple-700 transition">전송</button>
+        </div>
+    </div>
+</div>
+
+<!-- 챗봇용 자바스크립트 -->
+<script>
+    // 1. 챗봇 UI 제어 (열기/닫기/최소화)
+    const chatbotToggleBtn = document.getElementById('chatbot-toggle-btn');
+    const chatbotWindow = document.getElementById('chatbot-window');
+    const chatbotCloseBtn = document.getElementById('chatbot-close');
+    const chatbotMinimizeBtn = document.getElementById('chatbot-minimize');
+    const chatbotBodyContainer = document.getElementById('chatbot-body-container');
+    const chatbotHeader = document.getElementById('chatbot-header');
+
+    if(chatbotToggleBtn) {
+        chatbotToggleBtn.addEventListener('click', () => {
+            chatbotWindow.classList.remove('hidden');
+            chatbotBodyContainer.classList.remove('hidden');
+        });
+    }
+
+    chatbotCloseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        chatbotWindow.classList.add('hidden');
+    });
+
+    chatbotMinimizeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        chatbotBodyContainer.classList.toggle('hidden');
+    });
+
+    chatbotHeader.addEventListener('click', () => {
+        chatbotBodyContainer.classList.toggle('hidden');
+    });
+
+    // 2. 제미나이 API 통신 로직
+    const chatBox = document.getElementById('chat-box');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    sendBtn.addEventListener('click', async function() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        chatBox.innerHTML += `
+            <div class="text-right">
+                <span class="inline-block bg-purple-600 text-white px-4 py-2 rounded-2xl text-sm break-words max-w-[85%] shadow-sm">
+                    ${message}
+                </span>
+            </div>
+        `;
+        chatInput.value = '';
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        const loadingId = 'loading-' + Date.now();
+        chatBox.innerHTML += `
+            <div id="${loadingId}" class="text-left">
+                <span class="inline-block bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-4 py-2 rounded-2xl text-sm">
+                    타이핑 중...
+                </span>
+            </div>
+        `;
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        try {
+            const response = await fetch("{% url 'anime:chatbot_api' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+            document.getElementById(loadingId).remove();
+
+            if (response.ok) {
+                chatBox.innerHTML += `
+                    <div class="text-left">
+                        <span class="inline-block bg-purple-100 dark:bg-purple-900/60 text-purple-900 dark:text-purple-100 px-4 py-2 rounded-2xl text-sm break-words max-w-[85%] shadow-sm leading-relaxed">
+                            ${data.reply.replace(/\n/g, '<br>')}
+                        </span>
+                    </div>
+                `;
+            } else {
+                alert('오류가 발생했습니다: ' + data.error);
+            }
+        } catch (error) {
+            if(document.getElementById(loadingId)) {
+                document.getElementById(loadingId).remove();
+            }
+            alert('서버와 통신할 수 없습니다.');
+        }
+        
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    chatInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendBtn.click();
+        }
+    });
+</script>

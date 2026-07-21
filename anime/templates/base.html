@@ -6,17 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ANIVERSE</title>
     
-    <!-- 1. Tailwind CSS 로드 -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 2. Tailwind 다크모드 설정 -->
     <script>
-        tailwind.config = {
-            darkMode: 'class'
-        }
+        tailwind.config = { darkMode: 'class' }
     </script>
-
-    <!-- 3. 깜빡임 방지(FOUC) 스크립트: 화면을 그리기 전에 테마를 먼저 결정합니다 -->
     <script>
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
@@ -32,7 +25,7 @@
 </head>
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-200 font-sans antialiased transition-colors duration-300">
 
-    <nav class="bg-white dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 sticky top-0 z-50 transition-colors duration-300">
+    <nav class="bg-white dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 sticky top-0 z-40 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
                 <div class="flex items-center gap-6">
@@ -46,13 +39,17 @@
                 </div>
                     
                 <div class="flex items-center gap-4">
+                    <!-- 챗봇 토글 버튼 -->
+                    <button id="chatbot-toggle-btn" class="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-full text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800/60 transition shadow-sm" title="챗봇 열기">
+                        🤖
+                    </button>
+
                     <button id="theme-toggle" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition">
                         <span id="theme-icon">🌙</span>
                     </button>
 
                     {% if user.is_authenticated %}
                         <span class="text-sm font-bold text-violet-600 dark:text-indigo-400">{{ user.username }}님</span>
-
                         <a href="{% url 'deal:deal_chat_list' %}" class="text-xs font-semibold text-violet-600 dark:text-indigo-400 hover:underline transition">거래 채팅</a>
                         <a href="{% url 'accounts:profile' %}" class="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition">마이페이지</a>
                         <form method="POST" action="{% url 'accounts:logout' %}" class="inline-flex items-center m-0 p-0">
@@ -81,20 +78,21 @@
     {% block content %}
     {% endblock %}
 
-    <!-- 4. 토글 버튼 클릭 이벤트 스크립트 -->
+    <!-- 🔥 따로 분리해둔 챗봇 창 & 자바스크립트를 여기서 불러옵니다 -->
+    {% include 'includes/chatbot.html' %}
+
+    <!-- 테마 토글 자바스크립트 -->
     <script>
         const themeToggleBtn = document.getElementById('theme-toggle');
         const themeIcon = document.getElementById('theme-icon');
         const htmlElement = document.documentElement;
 
-        // 화면 로딩 직후, 현재 테마에 맞게 해/달 아이콘을 맞춰줍니다.
         if (htmlElement.classList.contains('dark')) {
             themeIcon.textContent = '☀️';
         } else {
             themeIcon.textContent = '🌙';
         }
 
-        // 버튼 클릭 시 작동할 이벤트
         themeToggleBtn.addEventListener('click', () => {
             htmlElement.classList.toggle('dark');
             if (htmlElement.classList.contains('dark')) {
