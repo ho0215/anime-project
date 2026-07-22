@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<main class="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="pb-4 border-b border-gray-100 dark:border-gray-800 mb-6">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">상품 신고하기</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">"{{ goods.title }}" 상품을 신고합니다.</p>
+    </div>
+
+    <form action="{% url 'deal:deal_goods_report' goods.id %}" method="POST" class="space-y-6">
+        {% csrf_token %}
+
+        <div class="space-y-2">
+            <label for="reason" class="block text-sm font-bold text-gray-700 dark:text-gray-300">신고 사유</label>
+            <select id="reason" name="reason" required
+                    class="w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white">
+                <option value="" disabled selected>선택해 주세요</option>
+                {% for value, label in reason_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="space-y-2">
+            <label for="detail" class="block text-sm font-bold text-gray-700 dark:text-gray-300">상세 내용 (선택)</label>
+            <textarea id="detail" name="detail" rows="4" placeholder="신고 사유에 대해 자세히 설명해 주세요."
+                      class="w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-violet-500 dark:focus:border-indigo-500 text-gray-900 dark:text-white"></textarea>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+            <a href="{% url 'deal:deal_detail' goods.id %}" class="flex-1 flex items-center justify-center h-11 text-sm font-bold border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition">
+                취소
+            </a>
+            <button type="submit" class="flex-1 h-11 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-md transition">
+                신고 접수하기
+            </button>
+        </div>
+    </form>
+</main>
+{% endblock %}
