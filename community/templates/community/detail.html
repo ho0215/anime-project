@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<!-- 💡 SweetAlert2 라이브러리 로드 -->
+<!-- SweetAlert2 라이브러리 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <div class="max-w-4xl mx-auto px-4 py-10">
-    <!-- 상단 네비게이션 / 카테고리 태그 -->
+    <!-- 카테고리 태그 -->
     <div class="mb-4">
         <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
             {% if post.board_type == 'notice' %}공지 사항
@@ -17,64 +17,51 @@
         </span>
     </div>
 
-    <!-- 제목 영역 -->
+    <!-- 제목 및 메타데이터 -->
     <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-6">
         <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
             {{ post.title }}
         </h1>
-        
-        <!-- 작성자 정보 및 메타데이터 -->
         <div class="flex items-center justify-between mt-4 text-sm text-gray-500 dark:text-gray-400">
             <div class="flex items-center gap-2">
                 <div class="w-7 h-7 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center text-purple-600 dark:text-purple-300 font-bold text-xs">
-                    U
+                    {{ post.author.username|slice:":1"|upper|default:"U" }}
                 </div>
                 <span class="font-medium text-gray-700 dark:text-gray-300">{{ post.author.username|default:"익명 사용자" }}</span>
                 <span class="text-gray-300 dark:text-gray-600">|</span>
                 <span>{{ post.created_at|date:"Y-m-d H:i" }}</span>
             </div>
-            
-            <div class="flex items-center gap-2">
-                <span>조회수 {{ post.view_count|default:0 }}</span>
-            </div>
+            <span>조회수 {{ post.view_count|default:0 }}</span>
         </div>
     </div>
 
-    <!-- 이미지와 본문 내용을 하나의 흰색 배경 카드 섹션으로 통합 -->
+    <!-- 본문 내용 -->
     <div class="p-6 md:p-8 border border-gray-100 dark:border-gray-700 rounded-2xl bg-white dark:bg-gray-800 shadow-sm min-h-[300px] mb-6">
-        
-        <!-- 대표 이미지 출력 영역 -->
         {% if post.image %}
         <div class="mb-6">
-            <span class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">첨부 이미지</span>
-            <div class="rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 max-h-[500px] flex justify-center bg-gray-50 dark:bg-gray-900 p-2">
-                <img src="{{ post.image.url }}" alt="Uploaded Image" class="object-contain max-w-full max-h-[480px] rounded-xl">
+            <div class="rounded-2xl overflow-hidden bg-gray-50 dark:bg-gray-900 p-2 border border-gray-100 dark:border-gray-700 flex justify-center">
+                <img src="{{ post.image.url }}" alt="Uploaded Image" class="object-contain max-h-[480px] rounded-xl">
             </div>
         </div>
         {% endif %}
-
-        <!-- 본문 내용 섹션 -->
         <div class="prose max-w-none text-gray-900 dark:text-gray-200 leading-relaxed break-words">
             {{ post.content|safe }}
         </div>
     </div>
 
-    <!-- 좋아요 버튼, 목록으로, 수정/삭제 버튼 정렬 -->
+    <!-- 하단 버튼 (목록, 좋아요, 수정/삭제) -->
     <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 pb-8 border-b border-gray-100 dark:border-gray-700">
         
-        <!-- [왼쪽] 목록으로 버튼 -->
-        <div class="w-full sm:w-auto text-center sm:text-left order-2 sm:order-1">
-            <a href="{% url 'community:board_list' %}?board_type={{ request.GET.board_type|default:'all' }}&per_page={{ request.GET.per_page|default:'15' }}&page={{ request.GET.page|default:'1' }}" class="inline-block px-5 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                 목록으로
-            </a>
-        </div>
+        <a href="{% url 'community:board_list' %}?board_type={{ request.GET.board_type|default:'all' }}&per_page={{ request.GET.per_page|default:'15' }}&page={{ request.GET.page|default:'1' }}" class="w-full sm:w-auto text-center px-5 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+            목록으로
+        </a>
 
-        <!-- [가운데] 추천하기(좋아요) 버튼 영역 -->
-        <div class="w-full sm:w-auto flex justify-center order-1 sm:order-2">
-            <form action="{% url 'community:post_like' post.pk %}" method="POST" class="inline-block">
+        <!-- 💡 좋아요 영역 (ID 부여됨) -->
+        <div id="like-section">
+            <form action="{% url 'community:post_like' post.pk %}" method="POST" onsubmit="submitAjax(event, 'like-section')">
                 {% csrf_token %}
                 {% if request.user in post.likes.all %}
-                    <button type="submit" class="flex items-center gap-2 px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-full font-semibold shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5">
+                    <button type="submit" class="flex items-center gap-2 px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-full font-semibold shadow-md transition transform hover:-translate-y-0.5">
                         <span>❤️</span>
                         <span>좋아요 취소</span>
                         <span class="bg-purple-800 text-purple-100 px-2.5 py-0.5 rounded-full text-sm">{{ post.total_likes }}</span>
@@ -89,42 +76,28 @@
             </form>
         </div>
         
-        <!-- [오른쪽] 수정 및 삭제 버튼 -->
-        <div class="w-full sm:w-auto flex justify-center sm:justify-end gap-2 order-3">
+        <div class="w-full sm:w-auto flex justify-center gap-2">
             {% if request.user == post.author %}
-                <a href="{% url 'community:post_edit' post.pk %}" class="px-5 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                    수정
-                </a>
-                
-                <a href="javascript:void(0);" 
-                   onclick="confirmDelete(event)" 
-                   data-url="{% url 'community:post_delete' post.pk %}" 
-                   class="px-5 py-2.5 bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400 rounded-xl font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition">
-                    삭제
-                </a>
+                <a href="{% url 'community:post_edit' post.pk %}" class="px-5 py-2.5 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">수정</a>
+                <button onclick="confirmDelete('{% url 'community:post_delete' post.pk %}')" class="px-5 py-2.5 bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400 rounded-xl font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition">삭제</button>
             {% endif %}
         </div>
     </div>
 
-    <!-- 댓글 & 대댓글 영역 -->
-    <div class="mt-10">
+    <!-- 💡 댓글 전체 영역 (ID 부여됨) -->
+    <div id="comments-section" class="mt-10">
         <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-6">
             댓글 <span class="text-purple-600">{{ post.comments.count }}</span>
         </h3>
 
         <!-- 댓글 작성 폼 -->
         {% if user.is_authenticated %}
-            <form action="{% url 'community:post_detail' post.pk %}" method="POST" class="mb-8">
+            <form action="{% url 'community:post_detail' post.pk %}" method="POST" class="mb-8" onsubmit="submitAjax(event, 'comments-section')">
                 {% csrf_token %}
                 <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm">
-                    <textarea name="content" rows="3" required
-                        class="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-400 outline-none resize-none"
-                        placeholder="따뜻한 댓글을 남겨보세요."></textarea>
+                    <textarea name="content" rows="3" required class="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-400 outline-none resize-none" placeholder="따뜻한 댓글을 남겨보세요."></textarea>
                     <div class="flex justify-end pt-3 border-t border-gray-100 dark:border-gray-700">
-                        <button type="submit" 
-                            class="px-5 py-2 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-full transition">
-                            등록
-                        </button>
+                        <button type="submit" class="px-5 py-2 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-full transition">등록</button>
                     </div>
                 </div>
             </form>
@@ -138,195 +111,154 @@
         <!-- 댓글 목록 -->
         <div class="space-y-6">
             {% for comment in comments %}
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden p-5">
                     
-                    <!-- 원댓글 영역 -->
-                    <div class="p-5">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center gap-2">
-                                <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center text-xs font-bold text-purple-600 dark:text-purple-400">
-                                    {{ comment.author.username|slice:":1"|upper }}
-                                </div>
-                                <span class="text-sm font-bold text-gray-900 dark:text-white">{{ comment.author.username }}</span>
-                                <span class="text-xs text-gray-400">{{ comment.created_at|date:"Y-m-d H:i" }}</span>
-                                {% if comment.is_updated %}
-                                    <span class="text-[10px] text-gray-400 dark:text-gray-500">(수정됨)</span>
-                                {% endif %}
+                    <!-- 원댓글 -->
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center text-xs font-bold text-purple-600 dark:text-purple-400">
+                                {{ comment.author.username|slice:":1"|upper }}
                             </div>
-                            
-                            <div class="flex items-center gap-3">
-                                <!-- 본인/관리자 수정·삭제 권한 부여 -->
-                                {% if user.is_authenticated %}
-                                    {% if request.user == comment.author %}
-                                        <button onclick="toggleEditForm('{{ comment.id }}')" class="text-xs font-semibold text-gray-500 hover:text-purple-600 transition">수정</button>
-                                    {% endif %}
-                                    {% if request.user == comment.author or request.user.is_superuser or request.user.is_staff %}
-                                        <a href="javascript:void(0);" onclick="confirmCommentDelete('{% url 'community:comment_delete' comment.id %}')" class="text-xs font-semibold text-red-500 hover:text-red-700 transition">삭제</a>
-                                    {% endif %}
-                                    <button onclick="toggleReplyForm('{{ comment.id }}')" class="text-xs font-semibold text-gray-500 hover:text-purple-600 transition">답글 달기</button>
-                                {% endif %}
-                            </div>
+                            <span class="text-sm font-bold text-gray-900 dark:text-white">{{ comment.author.username }}</span>
+                            <span class="text-xs text-gray-400">{{ comment.created_at|date:"Y-m-d H:i" }}</span>
+                            {% if comment.is_updated %}<span class="text-[10px] text-gray-400">(수정됨)</span>{% endif %}
                         </div>
                         
-                        <!-- 댓글 내용 출력 -->
-                        <div id="comment-content-{{ comment.id }}">
-                            <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line pl-9">{{ comment.content }}</p>
-                        </div>
-
-                        <!-- 댓글 수정 폼 (기본 숨김) -->
-                        {% if request.user == comment.author %}
-                            <div id="edit-form-{{ comment.id }}" class="hidden mt-3 pl-9">
-                                <form action="{% url 'community:comment_edit' comment.id %}" method="POST">
-                                    {% csrf_token %}
-                                    <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 border border-gray-100 dark:border-gray-800">
-                                        <textarea name="content" rows="2" required
-                                            class="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-400 outline-none resize-none">{{ comment.content }}</textarea>
-                                        <div class="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-                                            <button type="button" onclick="toggleEditForm('{{ comment.id }}')"
-                                                class="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 transition">
-                                                취소
-                                            </button>
-                                            <button type="submit" 
-                                                class="px-3 py-1.5 text-xs font-bold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition">
-                                                수정 완료
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        {% endif %}
-
-                        <!-- 대댓글 작성 폼 -->
-                        <div id="reply-form-{{ comment.id }}" class="hidden mt-4 pl-9">
-                            <form action="{% url 'community:post_detail' post.pk %}" method="POST">
-                                {% csrf_token %}
-                                <input type="hidden" name="parent_id" value="{{ comment.id }}">
-                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 border border-gray-100 dark:border-gray-800">
-                                    <textarea name="content" rows="2" required
-                                        class="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-400 outline-none resize-none"
-                                        placeholder="답글을 작성하세요."></textarea>
-                                    <div class="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-                                        <button type="button" onclick="toggleReplyForm('{{ comment.id }}')"
-                                            class="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 transition">
-                                            취소
-                                        </button>
-                                        <button type="submit" 
-                                            class="px-3 py-1.5 text-xs font-bold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition">
-                                            답글 등록
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
+                        <div class="flex items-center gap-3">
+                            {% if user.is_authenticated %}
+                                {% if request.user == comment.author %}
+                                    <button onclick="toggleForm('edit-form-{{ comment.id }}', 'comment-content-{{ comment.id }}')" class="text-xs font-semibold text-gray-500 hover:text-purple-600">수정</button>
+                                {% endif %}
+                                {% if request.user == comment.author or request.user.is_superuser %}
+                                    <button onclick="confirmCommentDelete('{% url 'community:comment_delete' comment.id %}')" class="text-xs font-semibold text-red-500 hover:text-red-700">삭제</button>
+                                {% endif %}
+                                <button onclick="toggleForm('reply-form-{{ comment.id }}', null)" class="text-xs font-semibold text-gray-500 hover:text-purple-600">답글 달기</button>
+                            {% endif %}
                         </div>
                     </div>
+                    
+                    <div id="comment-content-{{ comment.id }}">
+                        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line pl-9">{{ comment.content }}</p>
+                    </div>
 
-                    <!-- 대댓글 목록 영역 -->
+                    <!-- 원댓글 수정 폼 -->
+                    {% if request.user == comment.author %}
+                        <form id="edit-form-{{ comment.id }}" action="{% url 'community:comment_edit' comment.id %}" method="POST" class="hidden mt-3 pl-9" onsubmit="submitAjax(event, 'comments-section')">
+                            {% csrf_token %}
+                            <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 border border-gray-100 dark:border-gray-800">
+                                <textarea name="content" rows="2" required class="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-900 dark:text-gray-200 outline-none resize-none">{{ comment.content }}</textarea>
+                                <div class="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                                    <button type="button" onclick="toggleForm('edit-form-{{ comment.id }}', 'comment-content-{{ comment.id }}')" class="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-lg">취소</button>
+                                    <button type="submit" class="px-3 py-1.5 text-xs font-bold text-white bg-purple-600 rounded-lg">수정 완료</button>
+                                </div>
+                            </div>
+                        </form>
+                    {% endif %}
+
+                    <!-- 대댓글 작성 폼 -->
+                    <form id="reply-form-{{ comment.id }}" action="{% url 'community:post_detail' post.pk %}" method="POST" class="hidden mt-4 pl-9" onsubmit="submitAjax(event, 'comments-section')">
+                        {% csrf_token %}
+                        <input type="hidden" name="parent_id" value="{{ comment.id }}">
+                        <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 border border-gray-100 dark:border-gray-800">
+                            <textarea name="content" rows="2" required class="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-900 dark:text-gray-200 outline-none resize-none" placeholder="답글을 작성하세요."></textarea>
+                            <div class="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                                <button type="button" onclick="toggleForm('reply-form-{{ comment.id }}', null)" class="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-lg">취소</button>
+                                <button type="submit" class="px-3 py-1.5 text-xs font-bold text-white bg-purple-600 rounded-lg">답글 등록</button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- 대댓글 목록 -->
                     {% if comment.replies.all %}
-                        <div class="bg-gray-50/50 dark:bg-gray-900/20 border-t border-dashed border-gray-100 dark:border-gray-700 p-5 space-y-4">
+                        <div class="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700 pl-4 space-y-4">
                             {% for reply in comment.replies.all %}
                                 <div class="flex gap-3">
-                                    <span class="text-purple-400 dark:text-purple-600 mt-0.5 font-bold">↳</span>
+                                    <span class="text-purple-400 font-bold">↳</span>
                                     <div class="flex-1">
                                         <div class="flex items-center justify-between mb-2">
                                             <div class="flex items-center gap-2">
-                                                <div class="w-6 h-6 rounded-full bg-purple-100/50 dark:bg-purple-950/40 flex items-center justify-center text-[10px] font-bold text-purple-600 dark:text-purple-300">
-                                                    {{ reply.author.username|slice:":1"|upper }}
-                                                </div>
                                                 <span class="text-xs font-bold text-gray-900 dark:text-white">{{ reply.author.username }}</span>
                                                 <span class="text-[10px] text-gray-400">{{ reply.created_at|date:"Y-m-d H:i" }}</span>
-                                                {% if reply.is_updated %}
-                                                    <span class="text-[10px] text-gray-400 dark:text-gray-500">(수정됨)</span>
-                                                {% endif %}
+                                                {% if reply.is_updated %}<span class="text-[10px] text-gray-400">(수정됨)</span>{% endif %}
                                             </div>
                                             
-                                            <!-- 대댓글 수정/삭제 권한 (원댓글과 동일 규칙 적용 가능) -->
                                             <div class="flex items-center gap-2">
                                                 {% if user.is_authenticated %}
                                                     {% if request.user == reply.author %}
-                                                        <button onclick="toggleEditForm('{{ reply.id }}')" class="text-[11px] font-semibold text-gray-500 hover:text-purple-600 transition">수정</button>
+                                                        <button onclick="toggleForm('edit-form-{{ reply.id }}', 'comment-content-{{ reply.id }}')" class="text-[11px] font-semibold text-gray-500 hover:text-purple-600">수정</button>
                                                     {% endif %}
-                                                    {% if request.user == reply.author or request.user.is_superuser or request.user.is_staff %}
-                                                        <a href="javascript:void(0);" onclick="confirmCommentDelete('{% url 'community:comment_delete' reply.id %}')" class="text-[11px] font-semibold text-red-500 hover:text-red-700 transition">삭제</a>
+                                                    {% if request.user == reply.author or request.user.is_superuser %}
+                                                        <button onclick="confirmCommentDelete('{% url 'community:comment_delete' reply.id %}')" class="text-[11px] font-semibold text-red-500 hover:text-red-700">삭제</button>
                                                     {% endif %}
                                                 {% endif %}
                                             </div>
                                         </div>
                                         
-                                        <!-- 대댓글 내용 -->
                                         <div id="comment-content-{{ reply.id }}">
-                                            <p class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-line pl-8">{{ reply.content }}</p>
+                                            <p class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ reply.content }}</p>
                                         </div>
 
-                                        <!-- 대댓글 수정 폼 -->
                                         {% if request.user == reply.author %}
-                                            <div id="edit-form-{{ reply.id }}" class="hidden mt-2 pl-8">
-                                                <form action="{% url 'community:comment_edit' reply.id %}" method="POST">
-                                                    {% csrf_token %}
-                                                    <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-2.5 border border-gray-100 dark:border-gray-800">
-                                                        <textarea name="content" rows="2" required
-                                                            class="w-full bg-transparent border-none focus:ring-0 text-xs text-gray-900 dark:text-gray-200 placeholder-gray-400 outline-none resize-none">{{ reply.content }}</textarea>
-                                                        <div class="flex justify-end gap-2 pt-1 border-t border-gray-100 dark:border-gray-800">
-                                                            <button type="button" onclick="toggleEditForm('{{ reply.id }}')"
-                                                                class="px-2.5 py-1 text-[11px] font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 transition">
-                                                                취소
-                                                            </button>
-                                                            <button type="submit" 
-                                                                class="px-2.5 py-1 text-[11px] font-bold text-white bg-purple-600 rounded-md hover:bg-purple-700 transition">
-                                                                수정 완료
-                                                            </button>
-                                                        </div>
+                                            <form id="edit-form-{{ reply.id }}" action="{% url 'community:comment_edit' reply.id %}" method="POST" class="hidden mt-2" onsubmit="submitAjax(event, 'comments-section')">
+                                                {% csrf_token %}
+                                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-2.5 border border-gray-100 dark:border-gray-800">
+                                                    <textarea name="content" rows="2" required class="w-full bg-transparent border-none focus:ring-0 text-xs text-gray-900 dark:text-gray-200 outline-none resize-none">{{ reply.content }}</textarea>
+                                                    <div class="flex justify-end gap-2 pt-1 border-t border-gray-100 dark:border-gray-800">
+                                                        <button type="button" onclick="toggleForm('edit-form-{{ reply.id }}', 'comment-content-{{ reply.id }}')" class="px-2.5 py-1 text-[11px] font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-md">취소</button>
+                                                        <button type="submit" class="px-2.5 py-1 text-[11px] font-bold text-white bg-purple-600 rounded-md">수정 완료</button>
                                                     </div>
-                                                </form>
-                                            </div>
+                                                </div>
+                                            </form>
                                         {% endif %}
                                     </div>
                                 </div>
                             {% endfor %}
                         </div>
                     {% endif %}
-
                 </div>
             {% empty %}
                 <p class="text-center text-sm text-gray-400 py-8">아직 등록된 댓글이 없습니다. 첫 댓글을 남겨보세요!</p>
             {% endfor %}
         </div>
     </div>
-
 </div>
 
-<!-- 자바스크립트 영역 -->
 <script>
-function toggleReplyForm(commentId) {
-    var form = document.getElementById('reply-form-' + commentId);
-    if (form.classList.contains('hidden')) {
-        form.classList.remove('hidden');
-    } else {
-        form.classList.add('hidden');
+// 폼 숨김/표시 토글 함수 (통합)
+function toggleForm(formId, contentId) {
+    const form = document.getElementById(formId);
+    form.classList.toggle('hidden');
+    if (contentId) {
+        const content = document.getElementById(contentId);
+        content.classList.toggle('hidden');
     }
 }
 
-function toggleEditForm(commentId) {
-    var form = document.getElementById('edit-form-' + commentId);
-    var contentDiv = document.getElementById('comment-content-' + commentId);
-    
-    if (form.classList.contains('hidden')) {
-        form.classList.remove('hidden');
-        contentDiv.classList.add('hidden');
-    } else {
-        form.classList.add('hidden');
-        contentDiv.classList.remove('hidden');
+// 💡 새로고침 없는 AJAX 폼 전송 함수
+async function submitAjax(event, targetId) {
+    event.preventDefault(); // 폼 기본 제출(새로고침) 막기
+    const form = event.target;
+
+    try {
+        // 서버로 폼 데이터 백그라운드 전송
+        const response = await fetch(form.action, {
+            method: form.method,
+            body: new FormData(form)
+        });
+
+        // 서버에서 받아온 새 HTML 페이지에서 지정한 영역(targetId)만 파싱하여 덮어쓰기
+        const htmlText = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        document.getElementById(targetId).innerHTML = doc.getElementById(targetId).innerHTML;
+
+    } catch (error) {
+        Swal.fire('오류', '처리 중 문제가 발생했습니다.', 'error');
     }
 }
 
-function confirmDelete(event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    
-    var target = event.currentTarget;
-    var deleteUrl = target.getAttribute('data-url');
-
+// 본문 삭제 확인 (이건 목록으로 나가야 하므로 기존 방식 유지)
+function confirmDelete(deleteUrl) {
     Swal.fire({
         title: '정말 삭제하시겠습니까?',
         text: '삭제된 게시글은 다시 복구할 수 없습니다.',
@@ -335,58 +267,67 @@ function confirmDelete(event) {
         confirmButtonColor: '#d33',
         cancelButtonColor: '#a1a1aa',
         confirmButtonText: '삭제',
-        cancelButtonText: '취소',
-        reverseButtons: true,
-        customClass: {
-            title: 'swal-custom-title',
-            icon: 'swal-custom-icon'
-        }
-    }).then(function(result) {
+        cancelButtonText: '취소'
+    }).then((result) => {
         if (result.isConfirmed) {
             window.location.href = deleteUrl;
         }
     });
 }
 
+// 💡 댓글 삭제 확인 (삭제 후에도 새로고침 없이 AJAX 반영)
 function confirmCommentDelete(deleteUrl) {
     Swal.fire({
         title: '댓글을 삭제하시겠습니까?',
-        text: '삭제된 댓글은 복구할 수 없습니다.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#a1a1aa',
         confirmButtonText: '삭제',
-        cancelButtonText: '취소',
-        reverseButtons: true,
-        customClass: {
-            title: 'swal-custom-title',
-            icon: 'swal-custom-icon'
-        }
-    }).then(function(result) {
+        cancelButtonText: '취소'
+    }).then(async (result) => {
         if (result.isConfirmed) {
-            window.location.href = deleteUrl;
+            try {
+                // 삭제 처리 후 댓글 영역 교체
+                const response = await fetch(deleteUrl);
+                const htmlText = await response.text();
+                const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+                document.getElementById('comments-section').innerHTML = doc.getElementById('comments-section').innerHTML;
+            } catch(e) {
+                Swal.fire('오류', '삭제 중 문제가 발생했습니다.', 'error');
+            }
         }
     });
 }
-</script>
 
-<!-- 모달 스타일 -->
-<style>
-    .swal-custom-title {
-        font-size: 1.4rem !important;
-        font-weight: 700 !important;
-        padding-top: 10px !important;
+async function submitAjax(event, targetId) {
+    event.preventDefault(); 
+    const form = event.target;
+
+    try {
+        const response = await fetch(form.action, {
+            method: form.method,
+            body: new FormData(form),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest' // 💡 AJAX 요청임을 명시하는 헤더 추가
+            }
+        });
+
+        const htmlText = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        
+        // 좋아요와 댓글 영역을 각각 올바르게 갱신
+        if (targetId === 'like-section') {
+            document.getElementById('like-section').innerHTML = doc.getElementById('like-section').innerHTML;
+        } else if (targetId === 'comments-section') {
+            document.getElementById('comments-section').innerHTML = doc.getElementById('comments-section').innerHTML;
+        }
+
+    } catch (error) {
+        Swal.fire('오류', '처리 중 문제가 발생했습니다.', 'error');
     }
-    .swal-custom-icon {
-        width: 4rem !important;
-        height: 4rem !important;
-        min-width: 4rem !important;
-        margin-top: 20px !important;
-    }
-    .swal2-icon.swal2-warning .swal2-icon-content {
-        font-size: 2.5rem !important;
-    }
-</style>
+}
+</script>
 
 {% endblock %}

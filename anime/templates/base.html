@@ -106,6 +106,26 @@
             }
         });
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
+
+<!-- 2. 에디터 초기화 -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Django가 렌더링한 textarea의 기본 ID는 'id_content' 입니다.
+    if (document.getElementById("id_content")) {
+        tinymce.init({
+            selector: '#id_content',
+            height: 400,
+            menubar: false,
+            plugins: 'lists link image table code help wordcount',
+            toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+            language: 'ko_KR', // 한국어 지원
+            skin: (window.matchMedia("(prefers-color-scheme: dark)").matches ? "oxide-dark" : "oxide"),
+            content_css: (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default")
+        });
+    }
+});
+</script>
 </body>
 </html>
 
