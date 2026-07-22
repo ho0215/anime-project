@@ -34,7 +34,7 @@
                         <a href="{% url 'anime:anime_list' %}" class="font-medium transition {% if request.resolver_match.app_name == 'anime' and request.path != '/' %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white{% endif %}">애니메이션</a>
                         <a href="{% url 'deal:deal_board' %}" class="font-medium transition {% if request.resolver_match.app_name == 'deal' %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white{% endif %}">거래 / 장터</a>
                         <a href="{% url 'community:board_list' %}" class="font-medium transition {% if request.resolver_match.app_name == 'community' %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white{% endif %}">커뮤니티</a>
-                         <a href="{% url 'works:work_list' %}" class="font-medium transition {% if request.resolver_match.app_name == 'works' %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white{% endif %}">창작물</a>
+                        <a href="{% url 'works:work_list' %}" class="font-medium transition {% if request.resolver_match.app_name == 'works' %}text-violet-600 dark:text-indigo-400 font-bold{% else %}text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white{% endif %}">창작 마당</a>
                     </div>
                 </div>
                     
