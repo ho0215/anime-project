@@ -48,6 +48,9 @@ INSTALLED_APPS = [
     'community.apps.CommunityConfig',
     'ckeditor',
     'ckeditor_uploader',
+    'community.apps.CommunityConfig',
+    'ckeditor',
+    'ckeditor_uploader',
 ]
 
 

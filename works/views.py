@@ -21,12 +21,18 @@ def work_list(request):
     category = request.GET.get('category', 'all')
     sort = request.GET.get('sort', 'latest') # latest: 최신순, popular: 조회수순, likes: 추천순
     search_query = request.GET.get('search', '') # 원작명 검색용
-    
-    works = CreativeWork.objects.filter(status='published', is_public=True)
-
     # 1차 필터링: 카테고리
     if category != 'all':
+        works = CreativeWork.objects.filter(category=category)
+    else:
+        works = CreativeWork.objects.all()
+
+    # ⚠️ 여기서 위에 필터링한 works를 버리고 새로 재할당합니다!
+    works = CreativeWork.objects.filter(status='published', is_public=True)
+
+    if category != 'all':
         works = works.filter(category=category)
+
 
     # 2차 필터링: 원작 작품명 검색
     if search_query:
