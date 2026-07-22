@@ -78,7 +78,7 @@
     {% block content %}
     {% endblock %}
 
-    {% include 'footer.html' %}
+    {% block footer %}{% include 'footer.html' %}{% endblock %}
 
     <!-- 🔥 따로 분리해둔 챗봇 창 & 자바스크립트를 여기서 불러옵니다 -->
     {% include 'includes/chatbot.html' %}
