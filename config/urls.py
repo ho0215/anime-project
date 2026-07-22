@@ -2,6 +2,8 @@
 
 from django.contrib import admin
 from django.urls import path, include # include 추가
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -9,4 +11,11 @@ urlpatterns = [
     path('deal/', include('deal.urls')),
     path('accounts/', include('accounts.urls')),
     path('works/', include('works.urls')),
+<<<<<<< HEAD
 ]
+=======
+    path('community/', include('community.urls')),
+]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+>>>>>>> 1074b5c98a06bc76a1ee292e44999b870b60bfc4

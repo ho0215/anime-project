@@ -3,7 +3,7 @@ from django.contrib.auth.models import User # 장고 기본 유저 모델 활용
 
 class Goods(models.Model):
     # 카테고리 정의
-    CATEGORY_CHOICES = [
+    CATEGORY_CHOICES = [ 
         ('acrylic', '아크릴 스탠드/키링'),
         ('badge', '캔뱃지/핀버튼'),
         ('figure', '피규어/넨도로이드'),
@@ -32,10 +32,126 @@ class Goods(models.Model):
     
     # 대표 이미지 (Pillow 라이브러리 필요)
     # 만약 이미지 필드 에러 나면 우선 지우고 주석 해제해서 문자열(URL) 필드로 임시 대체 가능합니다.
-    image = models.CharField(max_length=500, blank=True, null=True, verbose_name="굿즈 사진 URL")
+    image = models.ImageField(upload_to='goods_images/', blank=True, null=True, verbose_name="굿즈 사진")
     
     description = models.TextField(verbose_name="상세 설명")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="등록일")
+    view_count = models.PositiveIntegerField(default=0, verbose_name="조회수")
 
     def __str__(self):
         return f"[{self.get_status_display()}] {self.title} - {self.price}원"
+    
+# deal/models.py
+
+class ChatRoom(models.Model):
+    goods = models.ForeignKey(Goods, on_delete=models.CASCADE, related_name='chat_rooms', verbose_name="관련 굿즈")
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='buyer_rooms', verbose_name="구매자")
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='seller_rooms', verbose_name="판매자")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="방 생성일")
+
+    # 🛠️ 추가: 각각의 참여자가 마지막으로 대화창을 본 시간 기록
+    buyer_last_viewed = models.DateTimeField(auto_now_add=True, verbose_name="구매자 최종 확인 시각")
+    seller_last_viewed = models.DateTimeField(auto_now_add=True, verbose_name="판매자 최종 확인 시각")
+    
+    buyer_left = models.BooleanField(default=False, verbose_name="구매자 나감 여부")
+    seller_left = models.BooleanField(default=False, verbose_name="판매자 나감 여부")
+
+    class Meta:
+        unique_together = ('goods', 'buyer', 'seller')
+
+    def __str__(self):
+        return f"[{self.goods.title}] {self.buyer.username}님과 {self.seller.username}님의 채팅방"
+
+
+class Message(models.Model):
+    # 이 메시지가 속한 채팅방
+    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages', verbose_name="채팅방")
+    # 메시지를 보낸 사람 (buyer 혹은 seller 둘 중 한 명)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="발신자")
+    # 대화 내용
+    content = models.TextField(verbose_name="내용")
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="전송 시각")
+
+    class Meta:
+        ordering = ['timestamp'] # 채팅 내역은 무조건 보낸 순서대로 정렬
+
+    def __str__(self):
+        return f"{self.sender.username}: {self.content[:20]}"
+
+
+class GoodsReport(models.Model):
+    # 신고 사유 정의
+    REASON_CHOICES = [
+        ('fraud', '사기 의심'),
+        ('fake', '허위매물/과장광고'),
+        ('prohibited', '거래 불가 품목'),
+        ('duplicate', '중복/도배 등록'),
+        ('etc', '기타'),
+    ]
+
+    # 처리 상태 정의
+    STATUS_CHOICES = [
+        ('pending', '대기'),
+        ('resolved', '처리완료'),
+        ('rejected', '반려'),
+    ]
+
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='goods_reports', verbose_name="신고자")
+    goods = models.ForeignKey(Goods, on_delete=models.CASCADE, related_name='reports', verbose_name="신고 대상 굿즈")
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES, verbose_name="신고 사유")
+    detail = models.TextField(blank=True, verbose_name="상세 내용")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending', verbose_name="처리 상태")
+    admin_note = models.TextField(blank=True, verbose_name="반려 사유(관리자 메모)")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="신고일")
+
+    class Meta:
+        unique_together = ('reporter', 'goods')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.get_status_display()}] {self.goods.title} 신고 ({self.reporter.username})"
+
+
+class UserReport(models.Model):
+    # 신고 사유 정의
+    REASON_CHOICES = [
+        ('fraud', '사기 피해'),
+        ('abusive', '비매너/욕설'),
+        ('noshow', '노쇼/일방적 거래 취소'),
+        ('etc', '기타'),
+    ]
+
+    # 처리 상태 정의
+    STATUS_CHOICES = [
+        ('pending', '대기'),
+        ('resolved', '처리완료'),
+        ('rejected', '반려'),
+    ]
+
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_user_reports', verbose_name="신고자")
+    reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_reports', verbose_name="신고 대상 유저")
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES, verbose_name="신고 사유")
+    detail = models.TextField(blank=True, verbose_name="상세 내용")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending', verbose_name="처리 상태")
+    admin_note = models.TextField(blank=True, verbose_name="반려 사유(관리자 메모)")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="신고일")
+
+    class Meta:
+        unique_together = ('reporter', 'reported_user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.get_status_display()}] {self.reported_user.username} 신고 ({self.reporter.username})"
+
+
+class Wishlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlists', verbose_name="유저")
+    goods = models.ForeignKey(Goods, on_delete=models.CASCADE, related_name='wishlisted_by', verbose_name="찜한 굿즈")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="찜한 시각")
+
+    class Meta:
+        unique_together = ('user', 'goods')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username}님이 찜한 {self.goods.title}"

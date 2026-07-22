@@ -1,5 +1,4 @@
 {% extends 'base.html' %}
-
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
     <div class="flex items-center gap-4 mb-8">
@@ -8,7 +7,6 @@
         </a>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">내 프로필</h1>
     </div>
-
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 md:p-8 space-y-8">
         <div class="flex items-center gap-6 pb-6 border-b border-gray-100 dark:border-gray-700">
             <div class="h-20 w-20 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600 dark:text-indigo-400 text-2xl font-black">
@@ -27,24 +25,42 @@
             
             <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
                 <div>
-                    <p class="font-medium text-gray-800 dark:text-gray-200">비밀번호 변경</p>
-                    <p class="text-xs text-gray-500 mt-0.5">주기적인 변경으로 계정을 안전하게 보호하세요.</p>
+                    <p class="font-medium text-gray-800 dark:text-gray-200">찜한 상품</p>
+                    <p class="text-xs text-gray-500 mt-0.5">장터에서 찜한 굿즈를 모아볼 수 있어요.</p>
                 </div>
-                <button class="px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                    변경하기
-                </button>
+                <a href="{% url 'deal:deal_wishlist' %}" class="px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    찜 목록 보기
+                </a>
             </div>
-
-            <div class="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl mt-4">
+            <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
                 <div>
-                    <p class="font-medium text-red-600 dark:text-red-400">계정 영구 삭제</p>
-                    <p class="text-xs text-red-500/80 mt-0.5">탈퇴 시 모든 데이터가 즉시 삭제됩니다.</p>
+                    <p class="font-medium text-gray-800 dark:text-gray-200">임시저장 목록</p>
+                    <p class="text-xs text-gray-500 mt-0.5">작성 중인 글을 이어서 쓸 수 있어요.</p>
                 </div>
-                <a href="{% url 'accounts:delete_account' %}" class="px-4 py-2 text-sm font-medium text-red-600 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800/50 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition">
-                    회원탈퇴
+                <a href="{% url 'works:my_drafts' %}" class="px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    임시저장 보기
+                </a>
+            </div>
+            <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                <div>
+                    <p class="font-medium text-gray-800 dark:text-gray-200">보관함</p>
+                    <p class="text-xs text-gray-500 mt-0.5">나만 보기로 전환한 글을 모아볼 수 있어요.</p>
+                </div>
+                <a href="{% url 'works:my_archive' %}" class="px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    보관함 보기
+                </a>
+            </div>
+            <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                <div>
+                    <p class="font-medium text-gray-800 dark:text-gray-200">관심목록</p>
+                    <p class="text-xs text-gray-500 mt-0.5">북마크한 다른 회원의 창작물을 모아볼 수 있어요.</p>
+                </div>
+                <a href="{% url 'works:my_interests' %}" class="px-4 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                    관심목록 보기
                 </a>
             </div>
         </div>
     </div>
-</div>
 {% endblock %}
+
+{% block footer %}{% endblock %}

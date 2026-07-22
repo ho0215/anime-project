@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="max-w-2xl mx-auto px-4 py-8">
+    <div class="pb-4 border-b border-gray-100 dark:border-gray-800 mb-6">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">채팅 목록</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">거래 중인 대화 내역을 확인해 보세요.</p>
+    </div>
+
+    <div id="chat-room-list" class="space-y-3">
+        {% for room in rooms %}
+            <a href="{% url 'deal:deal_chat_room' room.id %}" id="room-{{ room.id }}" data-unread="{{ room.unread_count }}"
+               class="flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-violet-500 dark:hover:border-indigo-500 rounded-2xl p-4 shadow-sm transition block">
+                
+                <div class="w-12 h-12 rounded-xl bg-gray-50 dark:bg-gray-900 overflow-hidden border border-gray-100 dark:border-gray-700 flex-shrink-0">
+                    {% if room.goods.image %}
+                        <img src="{{ room.goods.image.url }}" class="w-full h-full object-cover">
+                    {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-[10px] text-gray-400">[이미지]</div>
+                    {% endif %}
+                </div>
+
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-black text-gray-900 dark:text-white">
+                            {% if request.user == room.buyer %}
+                                {{ room.seller.username }} (판매자)
+                            {% else %}
+                                {{ room.buyer.username }} (구매자)
+                            {% endif %}
+                        </span>
+                        <span class="text-[10px] text-gray-400 truncate max-w-[150px]">
+                            · {{ room.goods.title }}
+                        </span>
+                    </div>
+                    
+                    <p id="last-msg-{{ room.id }}" class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+                        {% if room.messages.last %}
+                            {{ room.messages.last.content }}
+                        {% else %}
+                            대화 시작 전입니다. 입력창을 열어 대화를 시작해 보세요!
+                        {% endif %}
+                    </p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div id="badge-container-{{ room.id }}">
+                        {% if room.unread_count > 0 %}
+                            <span class="flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full shadow-sm animate-pulse">
+                                {{ room.unread_count }}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="text-gray-300 dark:text-gray-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                    </div>
+                </div>
+            </a>
+        {% empty %}
+            <div class="text-center py-16 text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800 rounded-2xl border border-dashed">
+                진행 중인 대화방이 없습니다.
+            </div>
+        {% endfor %}
+    </div>
+</main>
+
+<script>
+    const wsScheme = window.location.protocol === "https:" ? "wss://" : "ws://";
+    const listSocket = new WebSocket(wsScheme + window.location.host + '/ws/deal/chats/');
+
+    listSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const roomId = data.room_id;
+        const latestMessage = data.message;
+
+        const roomItem = document.querySelector(`#room-${roomId}`);
+        const listContainer = document.querySelector('#chat-room-list');
+
+        if (roomItem) {
+            // 1. 하단 최신 대화 미리보기 문구 변경
+            document.querySelector(`#last-msg-${roomId}`).textContent = latestMessage;
+
+            // 2. 안 읽은 배지 카운트 누적 연산
+            let currentUnread = parseInt(roomItem.getAttribute('data-unread')) || 0;
+            currentUnread += 1;
+            roomItem.setAttribute('data-unread', currentUnread);
+
+            // 3. 기존 Tailwind CSS 디자인 원본 모양 그대로 실시간 배지 주입
+            const badgeContainer = document.querySelector(`#badge-container-${roomId}`);
+            badgeContainer.innerHTML = `
+                <span class="flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full shadow-sm animate-pulse">
+                    ${currentUnread}
+                </span>`;
+
+            // 4. 리스트 최상단으로 해당 방 컴포넌트 즉각 배치
+            listContainer.prepend(roomItem);
+        }
+    };
+</script>
+{% endblock %}

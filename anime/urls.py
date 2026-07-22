@@ -1,11 +1,11 @@
-# anime/urls.py
-
 from django.urls import path
 from . import views
 
 app_name = 'anime'
-
 urlpatterns = [
-    # 기본 주소(예: 127.0.0.1:8000/)로 접속하면 views.home 함수를 실행합니다.
+    path('list/', views.anime_list, name='anime_list'),
+    path('<int:pk>/', views.anime_detail, name='anime_detail'), # 🔥 상세 페이지 경로 추가
+    path('<int:pk>/review/<int:review_pk>/delete/', views.review_delete, name='review_delete'),
     path('', views.home, name='home'),
+    path('api/chatbot/', views.chatbot_api, name='chatbot_api'),
 ]

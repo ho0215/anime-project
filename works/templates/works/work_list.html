@@ -6,8 +6,8 @@
     <!-- 상단 헤더 및 검색바 -->
     <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b pb-6 border-gray-200">
         <div>
-            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">2차 창작 허브</h1>
-            <p class="text-gray-500 mt-2">최애 작품의 코스프레, 일러스트, 소설을 만나보세요.</p>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">너의 しせん 나의 かんどう</h1>
+            <p class="text-gray-500 mt-2">최애 작품의 코스프레, 일러스트, 소설 함께 즐겨요.</p>
         </div>
         
         <!-- 원작 작품명 검색창 -->
@@ -27,11 +27,11 @@
             <a href="?category=all&sort={{ current_sort }}&search={{ search_query }}" 
                class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'all' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">전체</a>
             <a href="?category=cosplay&sort={{ current_sort }}&search={{ search_query }}" 
-               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'cosplay' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">📸 코스프레</a>
+               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'cosplay' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">코스프레</a>
             <a href="?category=illustration&sort={{ current_sort }}&search={{ search_query }}" 
-               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'illustration' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">🎨 일러스트</a>
+               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'illustration' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">일러스트</a>
             <a href="?category=novel&sort={{ current_sort }}&search={{ search_query }}" 
-               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'novel' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">✍️ 소설</a>
+               class="px-4 py-2 rounded-lg text-sm font-medium transition {% if current_category == 'novel' %}bg-white text-gray-900 shadow-sm{% else %}text-gray-500 hover:text-gray-900{% endif %}">소설</a>
         </div>
 
         <!-- 정렬 필터 및 창작물 등록 버튼 -->
@@ -44,15 +44,15 @@
                 <a href="?category={{ current_category }}&sort=likes&search={{ search_query }}" class="{% if current_sort == 'likes' %}font-bold text-indigo-600{% endif %}">추천순</a>
             </div>
             <a href="{% url 'works:work_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition">
-                작품 투고하기
+                작품 공유하기
             </a>
-        </div>
+        </div>                                      
     </div>
 
     <!-- 작품 리스트/갤러리 본문 -->
     {% if works %}
         {% if current_category == 'novel' %}
-            <!-- [소설 전용] 깔끔한 목록형 레이아웃 -->
+            <!-- [소설 전용] 깔끔한 목록형 레이아웃 (이미 전체 클릭 가능) -->
             <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm divide-y divide-gray-100">
                 {% for work in works %}
                     <a href="{% url 'works:work_detail' work.pk %}" class="block p-6 hover:bg-gray-50 transition">
@@ -61,7 +61,6 @@
                             <span class="text-xs text-gray-400">{{ work.created_at|date:"Y.m.d" }}</span>
                         </div>
                         <h3 class="text-xl font-bold text-gray-900 mb-2">{{ work.title }}</h3>
-                        <p class="text-gray-600 text-sm line-clamp-2 mb-4">{{ work.content }}</p>
                         <div class="flex items-center text-xs text-gray-400 gap-4">
                             <span>글쓴이: <strong>{{ work.author.username }}</strong></span>
                             <span>공백포함 {{ work.content_length }}자</span>
@@ -73,30 +72,32 @@
             </div>
         {% else %}
             <!-- [코스프레 / 일러스트 / 전체 전용] 비주얼 카드형 갤러리 레이아웃 -->
+            <!-- 카드 전체(이미지, 여백, 작성자 영역 포함) 어디를 눌러도 상세 페이지로 이동 -->
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {% for work in works %}
-                    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col">
-                        <a href="{% url 'works:work_detail' work.pk %}" class="block bg-gray-100 relative pt-[100%] overflow-hidden group">
+              {% for work in works %}
+                    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col cursor-pointer"
+                         onclick="location.href='{% url 'works:work_detail' work.pk %}'">
+                        {% if work.category != 'novel' %}
+                        <div class="block bg-gray-100 relative pt-[100%] overflow-hidden group">
                             {% if work.image %}
                                 <img src="{{ work.image.url }}" alt="{{ work.title }}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                            {% else %}
-                                <!-- 이미지가 없을 때의 대체 배경박스 (텍스트 중심) -->
-                                <div class="absolute inset-0 flex flex-col p-4 justify-between bg-gradient-to-br from-indigo-50 to-slate-50">
-                                    <span class="text-xs font-bold text-indigo-500 uppercase">NO IMAGE (소설/텍스트)</span>
-                                    <p class="text-gray-700 text-xs line-clamp-4">{{ work.content }}</p>
-                                    <div></div>
-                                </div>
                             {% endif %}
                             <span class="absolute top-2 left-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded backdrop-blur-sm">
                                 {{ work.get_category_display }}
                             </span>
-                        </a>
+                        </div>
+                        {% endif %}
                         <div class="p-4 flex-1 flex flex-col justify-between">
                             <div>
+                                {% if work.category == 'novel' %}
+                                    <span class="inline-block bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded mb-2">
+                                        {{ work.get_category_display }}
+                                    </span>
+                                {% endif %}
                                 <p class="text-xs font-medium text-indigo-600 mb-1">#{{ work.target_program }}</p>
-                                <a href="{% url 'works:work_detail' work.pk %}" class="block text-base font-bold text-gray-900 line-clamp-1 hover:text-indigo-600 mb-1">
+                                <p class="block text-base font-bold text-gray-900 line-clamp-1 hover:text-indigo-600 mb-1">
                                     {{ work.title }}
-                                </a>
+                                </p>
                                 <p class="text-xs text-gray-500">By {{ work.author.username }}</p>
                             </div>
                             <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-100 text-xs text-gray-400">

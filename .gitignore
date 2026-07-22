@@ -3,6 +3,7 @@ workenv/
 venv/
 __pycache__/
 *.pyc
+CLAUDE.md
 
 # 장고 로컬 데이터베이스 (각자 컴퓨터에서 생성해야 함)
 db.sqlite3
@@ -13,3 +14,5 @@ node_modules/
 
 # 환경 변수 (보안)
 .env
+static/css/output.css
+static/css/styles.css

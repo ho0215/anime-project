@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- 스크롤바 숨기기 CSS -->
+<style>
+    .hide-scroll-bar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .hide-scroll-bar::-webkit-scrollbar {
+        display: none;
+    }
+</style>
+
+<div class="max-w-7xl mx-auto px-4 py-8 space-y-12">
+
+    <!-- 1. 역대 최고 평점 명작 -->
+    <div>
+        <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <span class="text-yellow-400">👑</span> 역대 최고 평점 명작
+        </h2>
+        <div class="flex overflow-x-auto space-x-4 pb-4 hide-scroll-bar snap-x">
+            {% for anime in top_rated %}
+            <a href="{% url 'anime:anime_detail' anime.pk %}" class="flex-none w-36 md:w-48 snap-start group">
+                <div class="rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                    <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="w-full h-52 md:h-72 object-cover transform group-hover:scale-105 transition-transform duration-300">
+                </div>
+                <h3 class="mt-2 text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-purple-600 transition">{{ anime.title }}</h3>
+                <p class="text-xs text-gray-500">평점 {{ anime.score }}</p>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 2. 액션 & 판타지 몰아보기 -->
+    {% if action_fantasy %}
+    <div>
+        <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <span class="text-red-500">⚔️</span> 액션 & 판타지 몰아보기
+        </h2>
+        <div class="flex overflow-x-auto space-x-4 pb-4 hide-scroll-bar snap-x">
+            {% for anime in action_fantasy %}
+            <a href="{% url 'anime:anime_detail' anime.pk %}" class="flex-none w-36 md:w-48 snap-start group">
+                <div class="rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                    <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="w-full h-52 md:h-72 object-cover transform group-hover:scale-105 transition-transform duration-300">
+                </div>
+                <h3 class="mt-2 text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-purple-600 transition">{{ anime.title }}</h3>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 3. 설레는 로맨스 & 청춘 -->
+    {% if romance %}
+    <div>
+        <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <span class="text-pink-500">🌸</span> 설레는 로맨스 & 청춘
+        </h2>
+        <div class="flex overflow-x-auto space-x-4 pb-4 hide-scroll-bar snap-x">
+            {% for anime in romance %}
+            <a href="{% url 'anime:anime_detail' anime.pk %}" class="flex-none w-36 md:w-48 snap-start group">
+                <div class="rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                    <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="w-full h-52 md:h-72 object-cover transform group-hover:scale-105 transition-transform duration-300">
+                </div>
+                <h3 class="mt-2 text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-purple-600 transition">{{ anime.title }}</h3>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. 오늘의 추천 애니 -->
+    <div>
+        <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <span class="text-purple-500">🎲</span> 오늘의 추천 애니
+        </h2>
+        <div class="flex overflow-x-auto space-x-4 pb-4 hide-scroll-bar snap-x">
+            {% for anime in random_picks %}
+            <a href="{% url 'anime:anime_detail' anime.pk %}" class="flex-none w-36 md:w-48 snap-start group">
+                <div class="rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                    <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="w-full h-52 md:h-72 object-cover transform group-hover:scale-105 transition-transform duration-300">
+                </div>
+                <h3 class="mt-2 text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-purple-600 transition">{{ anime.title }}</h3>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

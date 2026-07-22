@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <div class="pb-4 border-b border-gray-100 dark:border-gray-800">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">내 신고 내역</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">내가 접수한 상품/유저 신고와 처리 상태를 확인할 수 있습니다.</p>
+    </div>
+
+    <section class="space-y-3">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white">상품 신고</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">상품</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">신고 사유</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">신고일</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">처리 상태</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    {% for report in goods_reports %}
+                    <tr>
+                        <td class="px-6 py-4">
+                            <a href="{% url 'deal:deal_detail' report.goods.id %}" class="font-medium text-gray-900 dark:text-white hover:text-violet-600 dark:hover:text-indigo-400 transition">{{ report.goods.title }}</a>
+                        </td>
+                        <td class="px-6 py-4 text-center text-gray-500">{{ report.get_reason_display }}</td>
+                        <td class="px-6 py-4 text-center text-gray-400">{{ report.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                                {% if report.status == 'pending' %}bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300
+                                {% elif report.status == 'resolved' %}bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300
+                                {% else %}bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300{% endif %}">
+                                {{ report.get_status_display }}
+                            </span>
+                            {% if report.status == 'rejected' and report.admin_note %}
+                                <p class="text-xs text-gray-400 mt-1">반려 사유: {{ report.admin_note }}</p>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">신고한 상품이 없습니다.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="space-y-3">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white">유저 신고</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">신고 대상</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">신고 사유</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">신고일</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">처리 상태</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    {% for report in user_reports %}
+                    <tr>
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ report.reported_user.username }}</td>
+                        <td class="px-6 py-4 text-center text-gray-500">{{ report.get_reason_display }}</td>
+                        <td class="px-6 py-4 text-center text-gray-400">{{ report.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                                {% if report.status == 'pending' %}bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300
+                                {% elif report.status == 'resolved' %}bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300
+                                {% else %}bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300{% endif %}">
+                                {{ report.get_status_display }}
+                            </span>
+                            {% if report.status == 'rejected' and report.admin_note %}
+                                <p class="text-xs text-gray-400 mt-1">반려 사유: {{ report.admin_note }}</p>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">신고한 유저가 없습니다.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+{% endblock %}

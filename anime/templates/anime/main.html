@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- 스크롤바 숨기기 CSS -->
+<style>
+    .hide-scroll-bar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .hide-scroll-bar::-webkit-scrollbar {
+        display: none;
+    }
+</style>
+
+<div class="max-w-7xl mx-auto px-4 py-8 space-y-12">
+
+    <!-- 애니메이션 카테고리 섹션 캐러셀: 한 번에 한 섹션만 보여주고 좌우 버튼으로 슬라이드 전환 -->
+    <div class="relative">
+        <button type="button" onclick="changeAnimeSlide(-1)" aria-label="이전 섹션"
+            class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-6 z-10 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
+
+        <div class="overflow-hidden">
+            <div id="anime-slide-track" class="flex transition-transform duration-500 ease-in-out">
+
+                <!-- 1. 역대 최고 평점 명작 -->
+                <div class="anime-slide w-full flex-shrink-0">
+                    <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="text-yellow-400">👑</span> 역대 최고 평점 명작
+                    </h2>
+                    <div class="flex overflow-x-auto space-x-4 pb-4 hide-scroll-bar snap-x">
+                        {% for anime in top_rated %}
+                        <a href="{% url 'anime:anime_detail' anime.pk %}" class="flex-none w-36 md:w-48 snap-start group">
+                            <div class="rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                                <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="w-full h-52 md:h-72 object-cover transform group-hover:scale-105 transition-transform duration-300">
+                            </div>
+                            <h3 class="mt-2 text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-purple-600 transition">{{ anime.title }}</h3>
+                            <p class="text-xs text-gray-500">평점 {{ anime.score }}</p>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- 2. 액션 & 판타지 몰아보기 -->
+                {% if action_fantasy %}
+                <div class="anime-slide w-full flex-shrink-0">
+                    <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="text-red-500">⚔️</span> 액션 & 판타지 몰아보기
+                    </h2>
+                    <div class="flex overflow-x-auto space-x-4 pb-4 hide-scroll-bar snap-x">
+                        {% for anime in action_fantasy %}
+                        <a href="{% url 'anime:anime_detail' anime.pk %}" class="flex-none w-36 md:w-48 snap-start group">
+                            <div class="rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                                <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="w-full h-52 md:h-72 object-cover transform group-hover:scale-105 transition-transform duration-300">
+                            </div>
+                            <h3 class="mt-2 text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-purple-600 transition">{{ anime.title }}</h3>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 3. 설레는 로맨스 & 청춘 -->
+                {% if romance %}
+                <div class="anime-slide w-full flex-shrink-0">
+                    <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="text-pink-500">🌸</span> 설레는 로맨스 & 청춘
+                    </h2>
+                    <div class="flex overflow-x-auto space-x-4 pb-4 hide-scroll-bar snap-x">
+                        {% for anime in romance %}
+                        <a href="{% url 'anime:anime_detail' anime.pk %}" class="flex-none w-36 md:w-48 snap-start group">
+                            <div class="rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                                <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="w-full h-52 md:h-72 object-cover transform group-hover:scale-105 transition-transform duration-300">
+                            </div>
+                            <h3 class="mt-2 text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-purple-600 transition">{{ anime.title }}</h3>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 4. 오늘의 추천 애니 -->
+                <div class="anime-slide w-full flex-shrink-0">
+                    <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="text-purple-500">🎲</span> 오늘의 추천 애니
+                    </h2>
+                    <div class="flex overflow-x-auto space-x-4 pb-4 hide-scroll-bar snap-x">
+                        {% for anime in random_picks %}
+                        <a href="{% url 'anime:anime_detail' anime.pk %}" class="flex-none w-36 md:w-48 snap-start group">
+                            <div class="rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                                <img src="{{ anime.image_url }}" alt="{{ anime.title }}" class="w-full h-52 md:h-72 object-cover transform group-hover:scale-105 transition-transform duration-300">
+                            </div>
+                            <h3 class="mt-2 text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-purple-600 transition">{{ anime.title }}</h3>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <button type="button" onclick="changeAnimeSlide(1)" aria-label="다음 섹션"
+            class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-6 z-10 w-10 h-10 rounded-full bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- 5+6. 커뮤니티 최신 글 / 창작물 신작 (같은 라인에 절반씩) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% if recent_posts %}
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                    <span class="text-purple-500"></span> 커뮤니티 최신 글
+                </h2>
+                <a href="{% url 'community:board_list' %}" class="text-sm font-semibold text-purple-600 dark:text-indigo-400 hover:underline">전체보기 →</a>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+                {% for post in recent_posts %}
+                <a href="{% url 'community:post_detail' post.pk %}" class="flex items-center justify-between px-6 py-3.5 hover:bg-purple-50/30 dark:hover:bg-purple-900/10 transition-colors">
+                    <span class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{{ post.title }}</span>
+                    <span class="flex items-center gap-3 text-xs text-gray-400 shrink-0 ml-4">
+                        <span>{{ post.author.username }}</span>
+                        <span>{{ post.created_at|date:"m.d" }}</span>
+                    </span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if recent_works %}
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                    <span class="text-indigo-500"></span> 창작물 신작
+                </h2>
+                <a href="{% url 'works:work_list' %}" class="text-sm font-semibold text-purple-600 dark:text-indigo-400 hover:underline">전체보기 →</a>
+            </div>
+            <div class="flex overflow-x-auto space-x-4 pb-4 hide-scroll-bar snap-x">
+                {% for work in recent_works %}
+                <a href="{% url 'works:work_detail' work.pk %}" class="flex-none w-32 md:w-40 snap-start group">
+                    <div class="rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 bg-gray-100 dark:bg-gray-900 h-44 md:h-56 flex items-center justify-center">
+                        {% if work.image %}
+                            <img src="{{ work.image.url }}" alt="{{ work.title }}" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300">
+                        {% else %}
+                            <span class="text-gray-400 text-xs">이미지 없음</span>
+                        {% endif %}
+                    </div>
+                    <h3 class="mt-2 text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-purple-600 transition">{{ work.title }}</h3>
+                    <p class="text-xs text-gray-500">{{ work.get_category_display }}</p>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 7. 거래장터 신규 굿즈 -->
+    {% if recent_goods %}
+    <div>
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="text-emerald-500"></span> 거래/장터 신규 글
+            </h2>
+            <a href="{% url 'deal:deal_board' %}" class="text-sm font-semibold text-purple-600 dark:text-indigo-400 hover:underline">전체보기 →</a>
+        </div>
+        <div class="flex overflow-x-auto space-x-4 pb-4 hide-scroll-bar snap-x">
+            {% for goods in recent_goods %}
+            <a href="{% url 'deal:deal_detail' goods.id %}" class="flex-none w-36 md:w-48 snap-start group">
+                <div class="rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 bg-gray-100 dark:bg-gray-900 h-52 md:h-72 flex items-center justify-center">
+                    {% if goods.image %}
+                        <img src="{{ goods.image.url }}" alt="{{ goods.title }}" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300">
+                    {% else %}
+                        <span class="text-gray-400 text-xs">이미지 없음</span>
+                    {% endif %}
+                </div>
+                <h3 class="mt-2 text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-purple-600 transition">{{ goods.title }}</h3>
+                <p class="text-xs text-gray-500">{{ goods.price }}원</p>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+let currentAnimeSlide = 0;
+function changeAnimeSlide(direction) {
+    const track = document.getElementById('anime-slide-track');
+    if (!track) return;
+    const slideCount = track.children.length;
+    if (!slideCount) return;
+    currentAnimeSlide = (currentAnimeSlide + direction + slideCount) % slideCount;
+    track.style.transform = `translateX(-${currentAnimeSlide * 100}%)`;
+}
+</script>
+{% endblock %}
