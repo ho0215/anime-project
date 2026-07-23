@@ -201,11 +201,6 @@
         const chatLog = document.getElementById('chat-log');
         chatLog.insertAdjacentHTML('beforeend', messageHtml);
         chatLog.scrollTop = chatLog.scrollHeight;
-        
-        // 스마트 복사 버튼 재감지 실행
-        if (typeof applySmartCopy === 'function') {
-            applySmartCopy();
-        }
     };
 
     chatSocket.onclose = function(e) {
@@ -236,39 +231,6 @@
         }
     }
 
-    // 🛠️ 누락 복구: 계좌/주소 감지 및 원클릭 클업보드 복사 엔진 탑재 완료
-    function applySmartCopy() {
-        const bubbles = document.querySelectorAll('#chat-log div.max-w-\\[70\\%\\]');
-        
-        bubbles.forEach(msg => {
-            if (msg.parentElement.querySelector('.copy-btn')) return;
-
-            const text = msg.textContent.trim();
-            const isAccount = /(?:계좌|은행|국민|신한|우리|하나|농협|\d{4,}-\d{2,}-\d{4,})/i.test(text) && /\d+/.test(text);
-            const isAddress = /(?:서울|경기|인천|대구|부산|시\s|구\s|동\s|로\s|길\s|아파트)/.test(text) && text.length > 5;
-
-            if (isAccount || isAddress) {
-                const btnLabel = isAccount ? '📋 계좌복사' : '📍 주소복사';
-                const copyBtn = document.createElement('button');
-                copyBtn.className = 'copy-btn text-[9px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded transition whitespace-nowrap mb-0.5 mx-1 hover:bg-violet-600 hover:text-white dark:hover:bg-indigo-600';
-                copyBtn.textContent = btnLabel;
-                
-                copyBtn.onclick = function(e) {
-                    e.preventDefault();
-                    navigator.clipboard.writeText(text).then(() => {
-                        copyBtn.textContent = '✅ 복사완료';
-                        copyBtn.classList.add('bg-green-500', 'text-white');
-                        setTimeout(() => {
-                            copyBtn.textContent = btnLabel;
-                            copyBtn.classList.remove('bg-green-500', 'text-white');
-                        }, 1200);
-                    });
-                };
-                msg.parentElement.insertBefore(copyBtn, msg);
-            }
-        });
-    }
-
     // 엔터 및 전송 버튼 바인딩 구역
     document.querySelector('#chat-message-input').focus();
     document.querySelector('#chat-message-input').onkeyup = function(e) {
@@ -280,9 +242,5 @@
         sendMessage();
     };
 
-    // DOM 로드 완료 시 초기 가동
-    document.addEventListener('DOMContentLoaded', () => {
-        applySmartCopy();
-    });
 </script>
 {% endblock %}
