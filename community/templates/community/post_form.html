@@ -114,7 +114,6 @@ function clearExistingImage() {
         confirmButtonText: '확인',
         cancelButtonText: '취소',
         reverseButtons: true,
-        // SweetAlert2 팝업 내부의 타이틀과 아이콘에 커스텀 클래스 주입
         customClass: {
             title: 'swal-custom-title',
             icon: 'swal-custom-icon'
@@ -139,8 +138,16 @@ function handleFileChange(input) {
         if (trigger) trigger.value = 'true';
     }
 }
-</script>
 
+// 💡 [필수] 폼 제출 직전 에디터(CKEditor)의 내용을 textarea로 강제 동기화
+document.getElementById('post-form').addEventListener('submit', function(e) {
+    if (typeof CKEDITOR !== 'undefined') {
+        for (let instance in CKEDITOR.instances) {
+            CKEDITOR.instances[instance].updateElement();
+        }
+    }
+});
+</script>
 <!-- 테일윈드 다크모드 및 모달 팝업 스타일 커스텀 -->
 <style>
     /* 팝업 제목 글씨 크기 줄여서 한 줄로 맞추기 */
