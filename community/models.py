@@ -63,4 +63,4 @@ class Comment(models.Model):
         ordering = ['created_at'] # 작성 순서대로 정렬
 
     def __str__(self):
-        return f'{self.author.username} - {self.content[:20]}'
+        return f'{self.author.username} - {self.content[:20]}'  
