@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-gray-100 dark:border-gray-800">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">신고 관리</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">접수된 상품/유저 신고를 확인하고 처리 상태를 관리하세요.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            {% for value, label in status_choices %}
+                <a href="?status={{ value }}" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if status_filter == value %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">{{ label }}</a>
+            {% endfor %}
+            <a href="?status=all" class="px-4 py-1.5 rounded-full text-xs font-bold transition {% if status_filter == 'all' %}bg-violet-600 text-white dark:bg-indigo-600{% else %}bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400{% endif %}">전체</a>
+        </div>
+    </div>
+
+    <section class="space-y-3">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white">상품 신고</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">상품</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">신고 사유</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">신고자</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">신고일</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">처리 상태</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    {% for report in goods_reports %}
+                    <tr>
+                        <td class="px-6 py-4">
+                            <a href="{% url 'deal:deal_detail' report.goods.id %}" class="font-medium text-gray-900 dark:text-white hover:text-violet-600 dark:hover:text-indigo-400 transition">{{ report.goods.title }}</a>
+                            {% if report.detail %}<p class="text-xs text-gray-400 mt-1">{{ report.detail }}</p>{% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center text-gray-500">{{ report.get_reason_display }}</td>
+                        <td class="px-6 py-4 text-center text-gray-500">{{ report.reporter.username }}</td>
+                        <td class="px-6 py-4 text-center text-gray-400">{{ report.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <select id="goods-report-status-{{ report.id }}" onchange="onReportStatusChange('goods', {{ report.id }})"
+                                    class="text-xs font-bold bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 focus:outline-none">
+                                {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if report.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    <tr id="goods-report-note-wrap-{{ report.id }}" class="{% if report.status != 'rejected' %}hidden{% endif %}">
+                        <td colspan="5" class="px-6 py-3 bg-gray-50/70 dark:bg-gray-900/40">
+                            <textarea id="goods-report-note-{{ report.id }}" rows="2" placeholder="반려 사유를 입력하세요"
+                                      onblur="submitReportUpdate('goods', {{ report.id }})"
+                                      class="w-full px-4 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-red-400 dark:focus:border-red-500 text-gray-900 dark:text-white">{{ report.admin_note }}</textarea>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="px-6 py-10 text-center text-gray-400">접수된 상품 신고가 없습니다.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="space-y-3">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white">유저 신고</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">신고 대상</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">신고 사유</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">신고자</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">신고일</th>
+                        <th class="px-6 py-3 text-center font-semibold text-gray-600 dark:text-gray-300">처리 상태</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    {% for report in user_reports %}
+                    <tr>
+                        <td class="px-6 py-4">
+                            <span class="font-medium text-gray-900 dark:text-white">{{ report.reported_user.username }}</span>
+                            {% if report.detail %}<p class="text-xs text-gray-400 mt-1">{{ report.detail }}</p>{% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center text-gray-500">{{ report.get_reason_display }}</td>
+                        <td class="px-6 py-4 text-center text-gray-500">{{ report.reporter.username }}</td>
+                        <td class="px-6 py-4 text-center text-gray-400">{{ report.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <select id="user-report-status-{{ report.id }}" onchange="onReportStatusChange('user', {{ report.id }})"
+                                    class="text-xs font-bold bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 focus:outline-none">
+                                {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if report.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    <tr id="user-report-note-wrap-{{ report.id }}" class="{% if report.status != 'rejected' %}hidden{% endif %}">
+                        <td colspan="5" class="px-6 py-3 bg-gray-50/70 dark:bg-gray-900/40">
+                            <textarea id="user-report-note-{{ report.id }}" rows="2" placeholder="반려 사유를 입력하세요"
+                                      onblur="submitReportUpdate('user', {{ report.id }})"
+                                      class="w-full px-4 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:border-red-400 dark:focus:border-red-500 text-gray-900 dark:text-white">{{ report.admin_note }}</textarea>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="px-6 py-10 text-center text-gray-400">접수된 유저 신고가 없습니다.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+function onReportStatusChange(reportType, reportId) {
+    const select = document.getElementById(`${reportType}-report-status-${reportId}`);
+    const noteWrap = document.getElementById(`${reportType}-report-note-wrap-${reportId}`);
+    const note = document.getElementById(`${reportType}-report-note-${reportId}`);
+    const status = select.value;
+
+    if (status === 'rejected') {
+        // 반려를 선택하면 사유 입력칸을 보여주고, 이미 사유가 있으면 바로 저장, 없으면 입력을 기다립니다.
+        noteWrap.classList.remove('hidden');
+        note.focus();
+        if (note.value.trim()) {
+            submitReportUpdate(reportType, reportId);
+        }
+    } else {
+        noteWrap.classList.add('hidden');
+        submitReportUpdate(reportType, reportId);
+    }
+}
+
+function submitReportUpdate(reportType, reportId) {
+    const select = document.getElementById(`${reportType}-report-status-${reportId}`);
+    const note = document.getElementById(`${reportType}-report-note-${reportId}`);
+    const status = select.value;
+
+    // 반려인데 사유가 아직 없으면 저장하지 않고 입력을 기다립니다.
+    if (status === 'rejected' && !note.value.trim()) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('status', status);
+    formData.append('admin_note', status === 'rejected' ? note.value.trim() : '');
+
+    fetch(`/deal/reports/${reportType}/${reportId}/status-ajax/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            select.classList.add('text-violet-600', 'scale-105');
+            setTimeout(() => select.classList.remove('text-violet-600', 'scale-105'), 500);
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(err => console.error('처리 상태 업데이트 실패:', err));
+}
+</script>
+{% endblock %}

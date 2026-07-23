@@ -1,0 +1,23 @@
+/* static/css/styles.css */
+
+/* 테일윈드 기본 설정 불러오기 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    /* 1. 자주 쓰는 버튼 스타일을 'btn-primary' 하나로 압축 */
+    .btn-primary {
+        @apply bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-150;
+    }
+
+    /* 2. 갤러리 카드 뼈대를 'gallery-card' 하나로 압축 */
+    .gallery-card {
+        @apply bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md transition duration-300;
+    }
+
+    /* 3. 해시태그 스타일을 'tag-badge' 하나로 압축 */
+    .tag-badge {
+        @apply inline-block px-2 py-1 bg-violet-50 dark:bg-gray-700 text-violet-600 dark:text-indigo-300 text-xs font-bold rounded-md mb-2;
+    }
+}
