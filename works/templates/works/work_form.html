@@ -49,7 +49,7 @@
                        class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
 
-            <!-- 파일 업로드 (코스프레/일러스트는 필수 권장, 소설은 생략 가능) -->
+            <!-- 파일 업로드 (모든 카테고리에서 표시) -->
             <div id="image-upload-section">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">이미지 파일 첨부</label>
 
@@ -64,7 +64,7 @@
                        class="w-full text-sm text-slate-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-400 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50">
                 <input type="file" name="extra_images" multiple accept="image/*"
                        class="w-full text-sm text-slate-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-400 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50 mt-2">
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">※ 코스프레 및 일러스트를 올리실 때는 꼭 이미지를 첨부해 주세요.</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">※ 코스프레 및 일러스트를 올리실 때는 꼭 이미지를 첨부해 주세요. (소설은 선택사항)</p>
             </div>
 
             <!-- 내용 입력 -->
@@ -98,25 +98,9 @@
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('workForm');
     const categorySelect = document.querySelector('select[name="category"]');
-    const imageSection = document.getElementById('image-upload-section');
     const mainImageInput = document.getElementById('main-image-input');
 
-    // 1. 카테고리가 소설이면 이미지 영역 숨기기
-    function toggleImageSection() {
-        if (categorySelect.value === 'novel') {
-            imageSection.style.display = 'none'; // 수정된 부분 (style.style.display -> style.display)
-            imageSection.querySelectorAll('input[type="file"]').forEach(function (el) {
-                el.value = '';
-            });
-        } else {
-            imageSection.style.display = '';
-        }
-    }
-
-    categorySelect.addEventListener('change', toggleImageSection);
-    toggleImageSection();
-
-    // 2. [등록하기/수정완료] 제출 시 사진 필수 검증 및 alert 경고창 띄우기
+    // [등록하기/수정완료] 제출 시 사진 필수 검증 및 alert 경고창 띄우기
     if (form) {
         form.addEventListener('submit', function (e) {
             const submitter = e.submitter;
