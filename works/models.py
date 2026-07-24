@@ -1,6 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+def image_upload_path(instance, filename):
+    ext = filename.split('.')[-1] # 확장자 추출 (예: png, jpg)
+    new_filename = f"{uuid.uuid4().hex}.{ext}" # 무작위 영어+숫자 이름 생성
+    return os.path.join('works_images/', new_filename)
+
 class CreativeWork(models.Model):
     CATEGORY_CHOICES = [
         ('cosplay', '코스프레'),
@@ -50,7 +55,7 @@ class WorkImage(models.Model):
         related_name='extra_images',
         verbose_name="소속 창작물"
     )
-    image = models.ImageField(upload_to='works_images/', verbose_name="추가 이미지")
+    image = models.ImageField(upload_to=image_upload_path, null=True, blank=True, verbose_name="창작물 이미지")
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="업로드일")
 
     def __str__(self):
