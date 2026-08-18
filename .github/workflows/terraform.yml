@@ -1,0 +1,50 @@
+name: "Terraform CI (PR Check)"
+
+# 메인 브랜치로 PR이 올라올 때만 이 액션을 실행해!
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'environments/dev/**'
+      - 'modules/**'
+
+jobs:
+  terraform-plan:
+    name: "Terraform Format, Validate, Plan"
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: "ap-northeast-2"
+
+    steps:
+      - name: 1. 리포지토리 코드 가져오기 (Checkout)
+        uses: actions/checkout@v3
+
+      - name: 2. AWS 인증 정보 설정 (Secrets 연동)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 3. 테라폼 설치
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: 4. 테라폼 초기화 (Init)
+        working-directory: ./environments/dev
+        run: terraform init
+
+      - name: 5. 코드 포맷 검사 (Fmt)
+        working-directory: ./environments/dev
+        run: terraform fmt -check
+        continue-on-error: true # 포맷이 안 맞아도 다음 단계로 넘어가게 설정
+
+      - name: 6. 문법 검사 (Validate)
+        working-directory: ./environments/dev
+        run: terraform validate
+
+      - name: 7. 변경 사항 미리보기 (Plan)
+        working-directory: ./environments/dev
+        run: terraform plan -no-color
