@@ -8,7 +8,7 @@ phases:
       - echo "Installing only necessary system dependencies for mysqlclient..."
       - yum install -y pkgconfig mysql-devel gcc python3-devel
       - echo "Creating virtual environment..."
-      - python3.11 -m venv venv
+      - python -m venv venv
       - echo "Installing dependencies..."
       - venv/bin/pip install --upgrade pip
       - venv/bin/pip install -r requirements.txt
