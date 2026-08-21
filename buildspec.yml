@@ -5,17 +5,15 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Creating virtual environment with python3.11..."
+      - echo "Creating virtual environment..."
       - python3.11 -m venv venv
-      - . venv/bin/activate
-      - echo "Installing dependencies..."
-      - pip install --upgrade pip
-      - pip install -r requirements.txt
+      - echo "Installing dependencies into venv..."
+      - venv/bin/pip install --upgrade pip
+      - venv/bin/pip install -r requirements.txt
   build:
     commands:
-      - echo "Running collectstatic..."
-      - . venv/bin/activate
-      - python manage.py collectstatic --noinput
+      - echo "Running collectstatic using venv python..."
+      - venv/bin/python manage.py collectstatic --noinput
 artifacts:
   files:
     - '**/*'
