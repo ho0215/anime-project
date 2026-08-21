@@ -5,16 +5,15 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Switching to Python 3.11..."
-      - pyenv global 3.11.4
-      - python --version
+      - echo "Checking Python version..."
+      - python3 --version
       - echo "Installing Python dependencies..."
-      - python -m pip install --upgrade pip
-      - pip install -r requirements.txt
+      - python3 -m pip install --upgrade pip
+      - pip3 install -r requirements.txt
   build:
     commands:
       - echo "Running static files collection..."
-      - python manage.py collectstatic --noinput
+      - python3 manage.py collectstatic --noinput
 artifacts:
   files:
     - '**/*'
