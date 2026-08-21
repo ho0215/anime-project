@@ -1,31 +1,23 @@
 version: 0.2
-
 phases:
   install:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "=== Available pyenv versions ==="
-      - pyenv versions
-      - echo "=== Setting pyenv version ==="
-      - export PYENV_VERSION=$(pyenv versions --bare | grep '^3\.11' | tail -1)
-      - echo "Using python version - $PYENV_VERSION"
-      - echo "=== Resolved python path ==="
-      - pyenv which python3.11 || pyenv which python
-      - echo "=== Creating virtual environment ==="
+      - echo "Checking python3 version"
+      - python3 --version
+      - echo "Creating virtual environment"
       - python3 -m venv venv
-      - echo "=== Installing dependencies into venv ==="
+      - echo "Upgrading pip"
       - venv/bin/pip install --upgrade pip
+      - echo "Installing requirements"
       - venv/bin/pip install -r requirements.txt
-      - echo "=== Installed packages ==="
+      - echo "Listing installed packages"
       - venv/bin/pip freeze
-      - echo "=== Python version ==="
-      - venv/bin/python --version
   build:
     commands:
-      - echo "Running collectstatic using venv python..."
+      - echo "Running collectstatic"
       - venv/bin/python manage.py collectstatic --noinput
-
 artifacts:
   files:
     - '**/*'
