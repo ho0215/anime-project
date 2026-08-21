@@ -1,23 +1,22 @@
 version: 0.2
+
 phases:
   install:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Checking python3 version"
-      - python3 --version
-      - echo "Creating virtual environment"
-      - python3 -m venv venv
-      - echo "Upgrading pip"
+      - echo "Installing system dependencies for mysqlclient..."
+      - apt-get update -y && apt-get install -y pkg-config default-libmysqlclient-dev build-essential
+      - echo "Creating virtual environment..."
+      - python3.11 -m venv venv
+      - echo "Installing dependencies into venv..."
       - venv/bin/pip install --upgrade pip
-      - echo "Installing requirements"
       - venv/bin/pip install -r requirements.txt
-      - echo "Listing installed packages"
-      - venv/bin/pip freeze
   build:
     commands:
-      - echo "Running collectstatic"
+      - echo "Running collectstatic..."
       - venv/bin/python manage.py collectstatic --noinput
+
 artifacts:
   files:
     - '**/*'
