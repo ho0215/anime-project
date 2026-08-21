@@ -1,10 +1,31 @@
 version: 0.2
+env:
+  variables:
+    MYSQLCLIENT_CFLAGS: "-I/usr/include/mysql"
+    MYSQLCLIENT_LDFLAGS: "-L/usr/lib64/mysql -lmysqlclient"
 phases:
   install:
     commands:
-      - echo "=== OS Release Info ==="
-      - cat /etc/os-release
-      - echo "=== Architecture ==="
-      - uname -m
-      - echo "=== Checking existing yum repos ==="
-      - yum repolist
+      - echo "Adding MariaDB repo manually for RHEL7-compatible AL2..."
+      - |
+        cat > /etc/yum.repos.d/mariadb.repo << 'EOF'
+        [mariadb]
+        name = MariaDB
+        baseurl = https://rpm.mariadb.org/10.11/rhel/7/x86_64
+        gpgkey = https://rpm.mariadb.org/RPM-GPG-KEY-MariaDB
+        gpgcheck = 1
+        EOF
+      - echo "Installing MariaDB devel packages..."
+      - yum install -y MariaDB-devel MariaDB-shared pkgconfig gcc python3-devel
+      - echo "Creating virtual environment..."
+      - python -m venv venv
+      - echo "Installing dependencies..."
+      - venv/bin/pip install --upgrade pip
+      - venv/bin/pip install -r requirements.txt
+  build:
+    commands:
+      - echo "Running collectstatic using venv python..."
+      - venv/bin/python manage.py collectstatic --noinput
+artifacts:
+  files:
+    - '**/*'
