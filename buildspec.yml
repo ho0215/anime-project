@@ -6,11 +6,10 @@ env:
 phases:
   install:
     commands:
-      - echo "Checking OS release..."
-      - cat /etc/os-release
-      - echo "Installing newer MariaDB devel via amazon-linux-extras..."
-      - /usr/bin/python2 /usr/bin/amazon-linux-extras install -y mariadb10.5 || /usr/bin/python3 /usr/bin/amazon-linux-extras install -y mariadb10.5
-      - yum install -y pkgconfig mariadb-devel gcc python3-devel
+      - echo "Adding MariaDB official repo..."
+      - curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | bash -s -- --mariadb-server-version="mariadb-10.11"
+      - echo "Installing MariaDB devel packages..."
+      - yum install -y MariaDB-devel MariaDB-shared pkgconfig gcc python3-devel
       - echo "Creating virtual environment..."
       - python -m venv venv
       - echo "Installing dependencies..."
