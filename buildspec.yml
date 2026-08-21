@@ -5,8 +5,8 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Installing system dependencies for mysqlclient..."
-      - apt-get update -y && apt-get install -y pkg-config default-libmysqlclient-dev build-essential
+      - echo "Installing system dependencies for mysqlclient on Amazon Linux..."
+      - yum update -y && yum install -y pkgconfig mysql-devel gcc python3-devel
       - echo "Installing Python dependencies..."
       - python -m pip install --upgrade pip
       - pip install -r requirements.txt
