@@ -3,9 +3,11 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      python: 3.11 # 프로젝트에서 사용하는 파이썬 버전 (필요시 3.10 등으로 수정)
+      python: 3.11
     commands:
-      - echo "Installing dependencies..."
+      - echo "Installing system dependencies for mysqlclient..."
+      - apt-get update -y && apt-get install -y pkg-config default-libmysqlclient-dev build-essential
+      - echo "Installing Python dependencies..."
       - python -m pip install --upgrade pip
       - pip install -r requirements.txt
   build:
