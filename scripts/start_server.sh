@@ -1,6 +1,11 @@
 #!/bin/bash
-# Gunicorn 서비스 재시작
-sudo systemctl restart gunicorn
+cd /home/ec2-user/aniverse
 
-# Nginx 서비스 재시작
-sudo systemctl restart nginx
+# 가상환경 활성화
+source /home/ec2-user/venv/bin/activate
+
+# 기존에 돌고 있던 서버 프로세스 끄기 (포트 충돌 방지)
+pkill -f gunicorn || true
+
+# Gunicorn(또는 Daphne)을 백그라운드로 실행
+nohup gunicorn --bind 0.0.0.0:8000 myproject.wsgi:application > /dev/null 2>&1 &
