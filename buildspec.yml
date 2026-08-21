@@ -1,12 +1,12 @@
 version: 0.2
-
 phases:
   install:
-    runtime-versions:
-      python: 3.11
     commands:
-      - echo "Installing only necessary system dependencies for mysqlclient..."
-      - yum install -y pkgconfig mysql-devel gcc python3-devel
+      - echo "Installing system dependencies for mysqlclient..."
+      - yum install -y pkgconfig mariadb-devel gcc python3-devel
+      - echo "Setting manual build flags for mysqlclient..."
+      - export MYSQLCLIENT_CFLAGS="-I/usr/include/mysql"
+      - export MYSQLCLIENT_LDFLAGS="-L/usr/lib64/mysql -lmysqlclient"
       - echo "Creating virtual environment..."
       - python -m venv venv
       - echo "Installing dependencies..."
@@ -14,9 +14,8 @@ phases:
       - venv/bin/pip install -r requirements.txt
   build:
     commands:
-      - echo "Running collectstatic..."
+      - echo "Running collectstatic using venv python..."
       - venv/bin/python manage.py collectstatic --noinput
-
 artifacts:
   files:
     - '**/*'
