@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11 # 프로젝트에서 사용하는 파이썬 버전 (필요시 3.10 등으로 수정)
+    commands:
+      - echo "Installing dependencies..."
+      - python -m pip install --upgrade pip
+      - pip install -r requirements.txt
+  build:
+    commands:
+      - echo "Running static files collection..."
+      - python manage.py collectstatic --noinput
+artifacts:
+  files:
+    - '**/*'
