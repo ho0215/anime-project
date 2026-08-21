@@ -6,12 +6,12 @@ phases:
       python: 3.11
     commands:
       - echo "Installing Python dependencies..."
-      - python3 -m pip install --upgrade pip
-      - pip3 install -r requirements.txt
+      - python -m pip install --upgrade pip
+      - pip install -r requirements.txt
   build:
     commands:
-      - echo "Running static files collection..."
-      - python3 manage.py collectstatic --noinput
+      - echo "Running static files collection with exact python environment..."
+      - python manage.py collectstatic --noinput
 artifacts:
   files:
     - '**/*'
