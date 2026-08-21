@@ -1,8 +1,8 @@
 #!/bin/bash
-cd /home/ubuntu/aniverse
+cd /home/ec2-user/aniverse
 
-# 파이썬 가상환경 활성화 (테라폼 user_data에서 미리 생성해두었다고 가정)
-source /home/ubuntu/venv/bin/activate
+# 파이썬 가상환경 활성화 (ec2-user 경로에 맞춤)
+source /home/ec2-user/venv/bin/activate
 
 # 필요한 패키지 업데이트
 pip install -r requirements.txt
