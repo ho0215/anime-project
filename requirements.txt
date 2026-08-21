@@ -6,3 +6,4 @@ packaging==26.2
 sqlparse==0.5.5
 daphne>=4.0.0
 cbor2==5.6.2
+channels
