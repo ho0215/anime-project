@@ -10,6 +10,10 @@ phases:
       - echo "Installing dependencies into venv..."
       - venv/bin/pip install --upgrade pip
       - venv/bin/pip install -r requirements.txt
+      - echo "=== Installed packages ==="
+      - venv/bin/pip freeze
+      - echo "=== Python version ==="
+      - venv/bin/python --version
   build:
     commands:
       - echo "Running collectstatic using venv python..."
