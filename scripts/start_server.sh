@@ -8,4 +8,4 @@ source /home/ec2-user/venv/bin/activate
 pkill -f gunicorn || true
 
 # Gunicorn(또는 Daphne)을 백그라운드로 실행
-nohup gunicorn --bind 0.0.0.0:8000 myproject.wsgi:application > /dev/null 2>&1 &
+nohup gunicorn --bind 0.0.0.0:8000 config.wsgi:application > /dev/null 2>&1 &
