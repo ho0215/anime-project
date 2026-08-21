@@ -8,7 +8,7 @@ phases:
       - pyenv versions
       - echo "=== Setting pyenv version ==="
       - export PYENV_VERSION=$(pyenv versions --bare | grep '^3\.11' | tail -1)
-      - echo "Using python version: $PYENV_VERSION"
+      - echo "Using python version - $PYENV_VERSION"
       - echo "=== Resolved python path ==="
       - pyenv which python3.11 || pyenv which python
       - echo "=== Creating virtual environment ==="
