@@ -5,7 +5,10 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Creating virtual environment..."
+      - echo "Setting pyenv version..."
+      - pyenv global 3.11.15
+      - pyenv rehash
+      - echo "Creating virtual environment with python3.11..."
       - python3.11 -m venv venv
       - echo "Installing dependencies into venv..."
       - venv/bin/pip install --upgrade pip
