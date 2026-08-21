@@ -4,11 +4,16 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Locating python3.11 binary..."
-      - find / -name "python3.11" -type f 2>/dev/null | head -5
-      - echo "Creating virtual environment with python3.11..."
-      - $(pyenv root)/versions/3.11.15/bin/python3.11 -m venv venv
-      - echo "Installing dependencies into venv..."
+      - echo "=== Available pyenv versions ==="
+      - pyenv versions
+      - echo "=== Setting pyenv global to any installed 3.11.x ==="
+      - export PYENV_VERSION=$(pyenv versions --bare | grep '^3\.11' | tail -1)
+      - echo "Using python version: $PYENV_VERSION"
+      - pyenv global $PYENV_VERSION
+      - pyenv rehash
+      - echo "=== Creating virtual environment ==="
+      - python3 -m venv venv
+      - echo "=== Installing dependencies into venv ==="
       - venv/bin/pip install --upgrade pip
       - venv/bin/pip install -r requirements.txt
       - echo "=== Installed packages ==="
