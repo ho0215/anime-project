@@ -5,11 +5,11 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Installing system dependencies for mysqlclient..."
-      - apt-get update -y && apt-get install -y pkg-config default-libmysqlclient-dev build-essential
+      - echo "Installing system dependencies for mysqlclient on Amazon Linux..."
+      - yum update -y && yum install -y pkgconfig mysql-devel gcc python3-devel
       - echo "Creating virtual environment..."
       - python3.11 -m venv venv
-      - echo "Installing dependencies into venv..."
+      - echo "Installing dependencies..."
       - venv/bin/pip install --upgrade pip
       - venv/bin/pip install -r requirements.txt
   build:
