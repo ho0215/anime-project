@@ -1,15 +1,13 @@
 version: 0.2
-
 phases:
   install:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Setting pyenv version..."
-      - pyenv global 3.11.15
-      - pyenv rehash
+      - echo "Locating python3.11 binary..."
+      - find / -name "python3.11" -type f 2>/dev/null | head -5
       - echo "Creating virtual environment with python3.11..."
-      - python3.11 -m venv venv
+      - $(pyenv root)/versions/3.11.15/bin/python3.11 -m venv venv
       - echo "Installing dependencies into venv..."
       - venv/bin/pip install --upgrade pip
       - venv/bin/pip install -r requirements.txt
