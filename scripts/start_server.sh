@@ -9,9 +9,8 @@ pkill -f gunicorn || true
 sleep 2
 
 echo "=== Starting Gunicorn Server ==="
-source $PROJECT_DIR/venv/bin/activate
 
-nohup gunicorn \
+nohup $PROJECT_DIR/venv/bin/gunicorn \
   --bind 0.0.0.0:8000 \
   --workers 2 \
   --worker-class sync \
