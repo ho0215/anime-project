@@ -1,12 +1,31 @@
 #!/bin/bash
 set -e
 
-cd /home/ubuntu/aniverse
+PROJECT_DIR="/home/ubuntu/aniverse"
+cd $PROJECT_DIR
 
-# 기존 구동 중이던 gunicorn 프로세스 종료
+echo "=== Stopping existing gunicorn processes ==="
 pkill -f gunicorn || true
 
-# 가상환경 안의 gunicorn 절대 경로로 백그라운드 실행
-nohup /home/ubuntu/venv/bin/gunicorn --bind 0.0.0.0:8000 config.wsgi:application > /home/ubuntu/aniverse/server_error.log 2>&1 &
+# 프로세스가 완전히 종료될 때까지 잠시 대기
+sleep 2
 
-echo "Gunicorn server started successfully on Ubuntu."
+echo "=== Starting Gunicorn Server ==="
+# 1. venv 경로를 프로젝트 하위(/home/ubuntu/aniverse/venv)로 수정
+# 2. 타겟그룹이 8000번을 바라보고 있다면 8000, 80번을 직접 받는다면 80으로 지정 (80 바인딩 시 root 권한 필요)
+nohup $PROJECT_DIR/venv/bin/gunicorn \
+  --bind 0.0.0.0:8000 \
+  --workers 2 \
+  --worker-class sync \
+  config.wsgi:application > $PROJECT_DIR/server.log 2>&1 &
+
+# 백그라운드 프로세스가 제대로 떴는지 2초 후 검증
+sleep 2
+if pgrep -f gunicorn > /dev/null; then
+    echo "Gunicorn server started successfully."
+    exit 0
+else
+    echo "Failed to start Gunicorn."
+    cat $PROJECT_DIR/server.log
+    exit 1
+fi
