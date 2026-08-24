@@ -6,11 +6,6 @@ files:
 
 hooks:
 
-  AfterInstall:
-    - location: scripts/after_install.sh
-      timeout: 300
-      runas: ubuntu # 👈 ec2-user -> ubuntu로 변경
-
   ApplicationStart:
     - location: scripts/start_app.sh
       timeout: 300
