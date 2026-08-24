@@ -6,10 +6,42 @@ cd $PROJECT_DIR
 
 echo "=== Updating system and installing OS dependencies ==="
 apt-get update -y
-apt-get install -y default-libmysqlclient-dev build-essential pkg-config python3-dev python3-venv python3-pip
+apt-get install -y default-libmysqlclient-dev build-essential pkg-config python3-dev python3-venv python3-pip nginx
+
+echo "=== Configuring Nginx ==="
+cat << 'EOF' > /etc/nginx/sites-available/aniverse
+server {
+    listen 80;
+    server_name _;
+
+    client_max_body_size 128M;
+
+    location /static/ {
+        alias /home/ubuntu/aniverse/staticfiles/;
+    }
+
+    location /media/ {
+        alias /home/ubuntu/aniverse/media/;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+# Nginx 심볼릭 링크 연결 및 기본 설정 제거
+rm -f /etc/nginx/sites-enabled/default
+ln -sf /etc/nginx/sites-available/aniverse /etc/nginx/sites-enabled/
+
+# staticfiles 폴더 권한 부여
+chown -R ubuntu:ubuntu $PROJECT_DIR
 
 echo "=== Recreating clean virtual environment ==="
-# CodeBuild에서 넘어온 깨진 venv 제거 후 EC2 환경에 맞게 재생성
 rm -rf $PROJECT_DIR/venv
 python3 -m venv $PROJECT_DIR/venv
 chown -R ubuntu:ubuntu $PROJECT_DIR/venv
