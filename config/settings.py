@@ -10,9 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
-from pathlib import Path
 import os
 from pathlib import Path
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -26,6 +26,14 @@ SECRET_KEY = 'django-insecure-)x9%%=s-bba)r@a+j+2dei8u*1%y7l7d76y9!0xgvw_@j=-+vu
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
+
+# ALB를 통한 POST 요청(로그인, 폼 제출 등) 시 CSRF 차단 방지
+CSRF_TRUSTED_ORIGINS = [
+    'http://*.elb.amazonaws.com',
+    'https://*.elb.amazonaws.com',
+    'http://localhost',
+    'http://127.0.0.1',
+]
 
 
 # Application definition
@@ -48,7 +56,6 @@ INSTALLED_APPS = [
     'ckeditor',
     'ckeditor_uploader',
 ]
-
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -89,17 +96,15 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'aniverse',
-        'USER': 'admin',                    
-        'PASSWORD': 'admin', 
-        'HOST': '192.168.32.76', # 예: 123.45.67.89
+        'USER': 'admin',
+        'PASSWORD': 'admin',
+        'HOST': 'aniverse-rds.cj2o4oeeykic.ap-northeast-2.rds.amazonaws.com',
         'PORT': '3306',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-
         },
     }
 }
-
 
 
 # Password validation
@@ -135,7 +140,7 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
-BASE_DIR = Path(__file__).resolve().parent.parent
+
 STATIC_URL = 'static/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
@@ -144,10 +149,11 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+
 CKEDITOR_UPLOAD_PATH = 'uploads/'
-LOGIN_URL = '/accounts/login/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
