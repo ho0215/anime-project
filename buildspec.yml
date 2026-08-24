@@ -1,31 +1,25 @@
 version: 0.2
-env:
-  variables:
-    MYSQLCLIENT_CFLAGS: "-I/usr/include/mysql"
-    MYSQLCLIENT_LDFLAGS: "-L/usr/lib64/mysql -lmysqlclient"
+
 phases:
   install:
     commands:
-      - echo "Adding MariaDB repo manually for RHEL7-compatible AL2..."
-      - |
-        cat > /etc/yum.repos.d/mariadb.repo << 'EOF'
-        [mariadb]
-        name = MariaDB
-        baseurl = https://rpm.mariadb.org/10.11/rhel/7/x86_64
-        gpgkey = https://rpm.mariadb.org/RPM-GPG-KEY-MariaDB
-        gpgcheck = 1
-        EOF
-      - echo "Installing MariaDB devel packages..."
-      - yum install -y MariaDB-devel MariaDB-shared pkgconfig gcc python3-devel
+      - echo "Installing build dependencies for Ubuntu..."
+      - apt-get update && apt-get install -y default-libmysqlclient-dev build-essential pkg-config python3-dev python3-venv
       - echo "Creating virtual environment..."
-      - python -m venv venv
-      - echo "Installing dependencies..."
-      - venv/bin/pip install --upgrade pip
-      - venv/bin/pip install -r requirements.txt
+      - python3 -m venv venv
+  pre_build:
+    commands:
+      - echo "Nothing to do in pre_build"
   build:
     commands:
-      - echo "Running collectstatic using venv python..."
+      - echo "Running pip install and collectstatic..."
+      - venv/bin/pip install --upgrade pip
+      - venv/bin/pip install -r requirements.txt
       - venv/bin/python manage.py collectstatic --noinput
+  post_build:
+    commands:
+      - echo "Build completed on `date`"
+
 artifacts:
   files:
     - '**/*'
