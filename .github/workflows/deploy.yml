@@ -6,7 +6,7 @@ on:
 
 env:
   AWS_REGION: ap-northeast-2
-  S3_BUCKET_NAME: $S3_BUCKET_NAME # 테라폼으로 생성할 배포용 S3 버킷 이름
+  S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}  # 또는 vars.S3_BUCKET_NAME
   CODE_DEPLOY_APP_NAME: aniverse-app
   CODE_DEPLOY_GROUP_NAME: aniverse-dg
 
