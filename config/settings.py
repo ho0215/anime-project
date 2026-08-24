@@ -97,7 +97,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'aniverse',
         'USER': 'admin',
-        'PASSWORD': 'admin',
+        'PASSWORD': 'admin1234!',
         'HOST': 'aniverse-rds.cj2o4oeeykic.ap-northeast-2.rds.amazonaws.com',
         'PORT': '3306',
         'OPTIONS': {
