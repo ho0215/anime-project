@@ -2,11 +2,17 @@ version: 0.0
 os: linux
 files:
   - source: /
-    destination: /home/ubuntu/app # ubuntu 홈 디렉터리로 지정
+    destination: /home/ubuntu/app
 
 hooks:
+  AfterInstall:
+    # 👇 의존성 설치 스크립트 지정
+    - location: scripts/install_dependencies.sh
+      timeout: 300
+      runas: ubuntu
 
   ApplicationStart:
-    - location: scripts/start_app.sh
+    # 👇 서버 시작 스크립트 지정
+    - location: scripts/start_server.sh
       timeout: 300
-      runas: ubuntu # 👈 ec2-user -> ubuntu로 변경
+      runas: ubuntu
