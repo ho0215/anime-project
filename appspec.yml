@@ -2,17 +2,20 @@ version: 0.0
 os: linux
 files:
   - source: /
-    destination: /home/ec2-user/aniverse
-permissions:
-  - object: /home/ec2-user/aniverse
-    owner: ec2-user
-    group: ec2-user
+    destination: /home/ubuntu/app # ubuntu 홈 디렉터리로 지정
+
 hooks:
-  AfterInstall:
-    - location: scripts/install_dependencies.sh
+  BeforeInstall:
+    - location: scripts/before_install.sh
       timeout: 300
-      runas: ec2-user
+      runas: ubuntu # 👈 ec2-user -> ubuntu로 변경
+
+  AfterInstall:
+    - location: scripts/after_install.sh
+      timeout: 300
+      runas: ubuntu # 👈 ec2-user -> ubuntu로 변경
+
   ApplicationStart:
-    - location: scripts/start_server.sh
-      timeout: 120
-      runas: ec2-user
+    - location: scripts/start_app.sh
+      timeout: 300
+      runas: ubuntu # 👈 ec2-user -> ubuntu로 변경
