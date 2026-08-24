@@ -16,3 +16,7 @@ node_modules/
 .env
 static/css/output.css
 static/css/styles.css
+
+venv/
+.venv/
+env/
