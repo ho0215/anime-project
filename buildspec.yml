@@ -23,3 +23,6 @@ phases:
 artifacts:
   files:
     - '**/*'
+  exclude-paths:
+    - 'venv/**/*'
+    - '.venv/**/*'
