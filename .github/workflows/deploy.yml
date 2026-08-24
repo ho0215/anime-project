@@ -8,7 +8,7 @@ env:
   AWS_REGION: ap-northeast-2
   S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}  # 또는 vars.S3_BUCKET_NAME
   CODE_DEPLOY_APP_NAME: aniverse-app
-  CODE_DEPLOY_GROUP_NAME: aniverse-dg
+  CODE_DEPLOY_GROUP_NAME: aniverse-deployment-group
 
 jobs:
   deploy:
