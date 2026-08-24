@@ -1,19 +1,20 @@
 #!/bin/bash
 set -e
 
-echo "=== Installing build dependencies ==="
-sudo yum install -y mariadb-devel gcc pkgconfig python3-devel
+echo "=== Updating system and installing dependencies ==="
+apt-get update -y
+apt-get install -y default-libmysqlclient-dev build-essential pkg-config python3-dev python3-venv
 
-echo "=== Recreating venv using default python3 (3.7) ==="
-sudo rm -rf /home/ec2-user/venv
-python3 -m venv /home/ec2-user/venv
-sudo chown -R ec2-user:ec2-user /home/ec2-user/venv
+echo "=== Setting up virtual environment ==="
+rm -rf /home/ubuntu/venv
+python3 -m venv /home/ubuntu/venv
+chown -R ubuntu:ubuntu /home/ubuntu/venv
 
-echo "=== Installing requirements ==="
-source /home/ec2-user/venv/bin/activate
+echo "=== Installing python requirements ==="
+source /home/ubuntu/venv/bin/activate
 pip install --upgrade pip
-pip install -r /home/ec2-user/aniverse/requirements.txt
+pip install -r /home/ubuntu/aniverse/requirements.txt
 
-echo "=== Running migrations & collectstatic ==="
-python /home/ec2-user/aniverse/manage.py migrate --noinput
-python /home/ec2-user/aniverse/manage.py collectstatic --noinput
+echo "=== Running Django migrations & collectstatic ==="
+python /home/ubuntu/aniverse/manage.py migrate --noinput
+python /home/ubuntu/aniverse/manage.py collectstatic --noinput
