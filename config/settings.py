@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'community.apps.CommunityConfig',
     'ckeditor',
     'ckeditor_uploader',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -158,5 +159,27 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
+
+# AWS S3 기본 설정
+AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')         # IAM 사용자 액세스 키
+AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY') # IAM 사용자 시크릿 키
+AWS_STORAGE_BUCKET_NAME = 'your-s3-bucket-name'      # S3 버킷 이름
+AWS_S3_REGION_NAME = 'ap-northeast-2'                # 서울 리전
+
+# S3 파일 덮어쓰기 방지 및 URL 설정
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = 'public-read' # 또는 필요에 따라 'private'
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
+
+# Django 4.2 이상 기준 스토리지 백엔드 설정
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage", 
+        # 정적 파일(CSS/JS)도 S3로 분리하려면 위 백엔드를 S3Boto3Storage로 변경
     },
 }
