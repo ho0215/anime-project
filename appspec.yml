@@ -5,10 +5,6 @@ files:
     destination: /home/ubuntu/app # ubuntu 홈 디렉터리로 지정
 
 hooks:
-  BeforeInstall:
-    - location: scripts/before_install.sh
-      timeout: 300
-      runas: ubuntu # 👈 ec2-user -> ubuntu로 변경
 
   AfterInstall:
     - location: scripts/after_install.sh
