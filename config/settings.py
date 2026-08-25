@@ -19,6 +19,7 @@ env = environ.Env(
     DJANGO_DEBUG=(bool, True),
     DB_PORT=(int, 3306),
     AWS_S3_REGION_NAME=(str, 'ap-northeast-2'),
+    USE_HTTPS=(bool, False),
 )
 # EC2 user_data 가 /etc/aniverse.env 에도 복사해 둠 (CodeDeploy 동기화 대비)
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
@@ -47,6 +48,17 @@ CSRF_TRUSTED_ORIGINS = env.list(
         'http://127.0.0.1',
     ],
 )
+
+# HTTP ALB 만 쓰는 동안 Secure 쿠키/HTTPS 강제 비활성
+USE_HTTPS = env('USE_HTTPS')
+SECURE_SSL_REDIRECT = USE_HTTPS and not DEBUG
+SESSION_COOKIE_SECURE = USE_HTTPS and not DEBUG
+CSRF_COOKIE_SECURE = USE_HTTPS and not DEBUG
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if USE_HTTPS else None
+
+# AI 챗봇 (Gemini) — EC2 .env / systemd EnvironmentFile 에서 로드
+GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
+GEMINI_MODEL = env('GEMINI_MODEL', default='gemini-2.0-flash')
 
 
 # Application definition

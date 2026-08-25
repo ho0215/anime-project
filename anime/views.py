@@ -1,15 +1,19 @@
 import json
+import os
 import requests
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
+from django.views.decorators.csrf import ensure_csrf_cookie
 from google import genai
 from .models import Anime, Review
 from community.models import Post
 from works.models import CreativeWork
 from deal.models import Goods
 
+@ensure_csrf_cookie
 def anime_list(request):
     query = request.GET.get('q', '').strip()
     sort = request.GET.get('sort', 'score')
@@ -161,21 +165,42 @@ def chatbot_api(request):
             if not user_message:
                 return JsonResponse({'error': '메시지가 없습니다.'}, status=400)
 
-            # 서버에 등록된 GEMINI_API_KEY 환경변수를 통해 인증
-            client = genai.Client()
-            
-            # 애니메이션 사이트 콘셉트에 맞춰 프롬프트 살짝 추가 (선택사항)
+            api_key = (
+                getattr(settings, 'GEMINI_API_KEY', '')
+                or os.environ.get('GEMINI_API_KEY')
+                or os.environ.get('GOOGLE_API_KEY')
+                or ''
+            )
+            if not api_key:
+                return JsonResponse(
+                    {
+                        'error': (
+                            'GEMINI_API_KEY 가 서버에 설정되지 않았습니다. '
+                            'GitHub Secret GEMINI_API_KEY 또는 TF_VAR_GEMINI_API_KEY 를 등록하세요.'
+                        )
+                    },
+                    status=503,
+                )
+
+            client = genai.Client(api_key=api_key)
+
             system_instruction = """너는 ANIVERSE라는 애니메이션 추천 사이트의 친절한 AI 어시스턴트야.
             사용자가 애니메이션을 물어보면 장점과 단점을 비교해서 설명해줘.
             답변은 항상 존댓말로 하고, 3~4문장으로 간결하게 대답해."""
             full_prompt = f"{system_instruction}\n\n질문: {user_message}"
 
+            model_name = (
+                getattr(settings, 'GEMINI_MODEL', None)
+                or os.environ.get('GEMINI_MODEL')
+                or 'gemini-2.0-flash'
+            )
             response = client.models.generate_content(
-                model='gemini-3.5-flash',
+                model=model_name,
                 contents=full_prompt,
             )
-            
-            return JsonResponse({'reply': response.text})
+
+            reply = getattr(response, 'text', None) or str(response)
+            return JsonResponse({'reply': reply})
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)

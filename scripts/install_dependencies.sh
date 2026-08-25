@@ -26,7 +26,7 @@ if ! command -v mysql_config >/dev/null 2>&1; then
 fi
 echo "mysql_config OK: $(mysql_config --version)"
 
-echo "=== Configuring Nginx (proxy to Gunicorn) ==="
+echo "=== Configuring Nginx (HTTP + WebSocket upgrade to Daphne) ==="
 cat << 'EOF' > /etc/nginx/sites-available/aniverse
 server {
     listen 80 default_server;
@@ -47,6 +47,19 @@ server {
         proxy_set_header Host $host;
     }
 
+    # Django Channels (deal chat)
+    location /ws/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
@@ -60,10 +73,10 @@ EOF
 rm -f /etc/nginx/sites-enabled/default
 ln -sf /etc/nginx/sites-available/aniverse /etc/nginx/sites-enabled/aniverse
 
-echo "=== Ensure Gunicorn systemd unit exists ==="
+echo "=== Ensure Daphne (ASGI) systemd unit exists ==="
 cat > /etc/systemd/system/aniverse.service <<'UNIT'
 [Unit]
-Description=Aniverse Django (Gunicorn)
+Description=Aniverse Django (Daphne ASGI)
 After=network.target
 
 [Service]
@@ -72,13 +85,12 @@ Group=ubuntu
 WorkingDirectory=/home/ubuntu/aniverse
 EnvironmentFile=-/home/ubuntu/aniverse/.env
 EnvironmentFile=-/etc/aniverse.env
-ExecStart=/home/ubuntu/aniverse/venv/bin/gunicorn \
-  --bind 127.0.0.1:8000 \
-  --workers 2 \
-  --worker-class sync \
-  --access-logfile /home/ubuntu/aniverse/gunicorn-access.log \
-  --error-logfile /home/ubuntu/aniverse/gunicorn-error.log \
-  config.wsgi:application
+ExecStart=/home/ubuntu/aniverse/venv/bin/daphne \
+  -b 127.0.0.1 \
+  -p 8000 \
+  --access-log /home/ubuntu/aniverse/daphne-access.log \
+  --proxy-headers \
+  config.asgi:application
 Restart=always
 RestartSec=5
 
@@ -105,7 +117,8 @@ echo "=== Installing python requirements (mysqlclient needs build deps above) ==
 "$PROJECT_DIR/venv/bin/python" - <<'PY'
 import django
 import MySQLdb  # from mysqlclient
-import gunicorn
+import daphne
+from google import genai  # noqa: F401
 print("python deps import OK", django.get_version(), MySQLdb.version_info)
 PY
 

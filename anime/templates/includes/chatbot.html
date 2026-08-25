@@ -1,5 +1,6 @@
 <!-- 🔥 우측 하단 플로팅 챗봇 윈도우 -->
 <div id="chatbot-window" class="hidden fixed bottom-6 right-6 w-80 sm:w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden transition-all duration-300">
+    {% csrf_token %}
     <!-- 헤더 영역 -->
     <div id="chatbot-header" class="bg-purple-600 px-4 py-3 flex justify-between items-center cursor-pointer select-none">
         <span class="text-white font-bold flex items-center gap-2">🤖 ANIVERSE AI</span>
@@ -79,6 +80,12 @@
         return cookieValue;
     }
 
+    function getCsrfToken() {
+        const input = document.querySelector('#chatbot-window input[name="csrfmiddlewaretoken"]');
+        if (input && input.value) return input.value;
+        return getCookie('csrftoken');
+    }
+
     sendBtn.addEventListener('click', async function() {
         const message = chatInput.value.trim();
         if (!message) return;
@@ -104,16 +111,27 @@
         chatBox.scrollTop = chatBox.scrollHeight;
 
         try {
+            const csrf = getCsrfToken();
+            if (!csrf) {
+                throw new Error('CSRF 토큰이 없습니다. 페이지를 새로고침 후 다시 시도하세요.');
+            }
+
             const response = await fetch("{% url 'anime:chatbot_api' %}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
+                    'X-CSRFToken': csrf
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({ message: message })
             });
 
-            const data = await response.json();
+            let data = {};
+            try {
+                data = await response.json();
+            } catch (parseErr) {
+                throw new Error('서버 응답을 해석할 수 없습니다. (HTTP ' + response.status + ')');
+            }
             document.getElementById(loadingId).remove();
 
             if (response.ok) {
@@ -125,13 +143,14 @@
                     </div>
                 `;
             } else {
-                alert('오류가 발생했습니다: ' + data.error);
+                alert('오류가 발생했습니다: ' + (data.error || ('HTTP ' + response.status)));
             }
         } catch (error) {
             if(document.getElementById(loadingId)) {
                 document.getElementById(loadingId).remove();
             }
-            alert('서버와 통신할 수 없습니다.');
+            console.error(error);
+            alert('서버와 통신할 수 없습니다. ' + (error && error.message ? error.message : ''));
         }
         
         chatBox.scrollTop = chatBox.scrollHeight;
