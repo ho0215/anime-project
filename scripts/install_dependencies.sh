@@ -101,9 +101,12 @@ echo "=== Installing python requirements (mysqlclient needs build deps above) ==
 "$PROJECT_DIR/venv/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
 
 # 런타임 import 스모크 테스트
+# pip 패키지명은 mysqlclient 이지만 import 모듈명은 MySQLdb 이다.
 "$PROJECT_DIR/venv/bin/python" - <<'PY'
-import django, mysqlclient, gunicorn  # noqa: F401
-print("python deps import OK", django.get_version())
+import django
+import MySQLdb  # from mysqlclient
+import gunicorn
+print("python deps import OK", django.get_version(), MySQLdb.version_info)
 PY
 
 echo "=== Running Django migrations & collectstatic ==="
