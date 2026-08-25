@@ -2,38 +2,60 @@ name: Django CD Pipeline (CodeDeploy)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
+  workflow_dispatch:
 
 env:
   AWS_REGION: ap-northeast-2
-  S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}  # 또는 vars.S3_BUCKET_NAME
-  CODE_DEPLOY_APP_NAME: aniverse-app
-  CODE_DEPLOY_GROUP_NAME: aniverse-deployment-group
+  S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+  CODE_DEPLOY_APP_NAME: ${{ vars.CODE_DEPLOY_APP_NAME || 'aniverse-app' }}
+  CODE_DEPLOY_GROUP_NAME: ${{ vars.CODE_DEPLOY_GROUP_NAME || 'aniverse-deployment-group' }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: 1. 저장소 코드 가져오기
-      uses: actions/checkout@v4  # v3에서 v4로 변경
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: 2. AWS 인증 정보 설정
-      uses: aws-actions/configure-aws-credentials@v4  # v2에서 v4로 변경 (필수!)
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: 3. 프로젝트 파일 압축
-      run: zip -r deploy.zip . -x "*.git*"
+      - name: Package application
+        run: |
+          zip -r deploy.zip . \
+            -x "*.git*" \
+            -x "*venv*" \
+            -x "*.cursor*" \
+            -x "*__pycache__*" \
+            -x "*.pyc" \
+            -x "mydb_backup.sql" \
+            -x "media/*" \
+            -x "media (2)/*" \
+            -x "staticfiles/*" \
+            -x ".env"
 
-    - name: 4. 압축 파일을 S3에 업로드
-      run: aws s3 cp deploy.zip s3://$S3_BUCKET_NAME/deploy.zip
+      - name: Upload artifact to S3
+        run: aws s3 cp deploy.zip "s3://${S3_BUCKET_NAME}/deploy.zip"
 
-    - name: 5. CodeDeploy 배포 지시
-      run: |
-        aws deploy create-deployment \
-          --application-name ${{ env.CODE_DEPLOY_APP_NAME }} \
-          --deployment-config-name CodeDeployDefault.OneAtATime \
-          --deployment-group-name ${{ env.CODE_DEPLOY_GROUP_NAME }} \
-          --s3-location bucket=$S3_BUCKET_NAME,bundleType=zip,key=deploy.zip
+      - name: Create CodeDeploy deployment
+        id: deploy
+        run: |
+          DEPLOY_ID=$(aws deploy create-deployment \
+            --application-name "$CODE_DEPLOY_APP_NAME" \
+            --deployment-config-name CodeDeployDefault.OneAtATime \
+            --deployment-group-name "$CODE_DEPLOY_GROUP_NAME" \
+            --s3-location "bucket=${S3_BUCKET_NAME},bundleType=zip,key=deploy.zip" \
+            --query deploymentId \
+            --output text)
+          echo "deployment_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
+          echo "Deployment ID: $DEPLOY_ID" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Wait for deployment to succeed
+        run: |
+          aws deploy wait deployment-successful --deployment-id "${{ steps.deploy.outputs.deployment_id }}"
+          echo "Deployment succeeded" >> "$GITHUB_STEP_SUMMARY"
