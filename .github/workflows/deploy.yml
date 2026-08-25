@@ -39,6 +39,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Sync media to public S3 bucket
+        env:
+          STATIC_BUCKET_NAME: ${{ vars.STATIC_BUCKET_NAME || secrets.STATIC_BUCKET_NAME || 'aniverse-static-ho0215-dev-2026-679583587966-ap-northeast-2' }}
+        run: |
+          chmod +x scripts/sync_media_to_s3.sh
+          bash scripts/sync_media_to_s3.sh
+
       - name: Package application
         run: |
           zip -r deploy.zip . \
