@@ -1,8 +1,12 @@
 name: Django CD Pipeline (CodeDeploy)
 
+# Run workflow 버튼은 기본 브랜치(main)에 workflow_dispatch 가 있어야 보임.
+# 머지 전 테스트용으로 feature 브랜치 push 에도 동작하게 함.
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
+      - cursor/terraform-cicd-automation
   workflow_dispatch:
 
 env:
