@@ -192,7 +192,7 @@ def chatbot_api(request):
             model_name = (
                 getattr(settings, 'GEMINI_MODEL', None)
                 or os.environ.get('GEMINI_MODEL')
-                or 'gemini-2.0-flash'
+                or 'gemini-3.6-flash'
             )
             response = client.models.generate_content(
                 model=model_name,

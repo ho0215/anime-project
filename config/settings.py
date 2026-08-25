@@ -58,7 +58,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if USE_HTTPS else 
 
 # AI 챗봇 (Gemini) — EC2 .env / systemd EnvironmentFile 에서 로드
 GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
-GEMINI_MODEL = env('GEMINI_MODEL', default='gemini-2.0-flash')
+GEMINI_MODEL = env('GEMINI_MODEL', default='gemini-3.6-flash')
 
 
 # Application definition
