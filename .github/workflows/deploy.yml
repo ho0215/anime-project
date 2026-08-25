@@ -56,6 +56,33 @@ jobs:
       - name: Upload artifact to S3
         run: aws s3 cp deploy.zip "s3://${S3_BUCKET_NAME}/deploy.zip"
 
+      - name: Wait for any in-progress CodeDeploy to finish
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            ACTIVE=$(aws deploy list-deployments \
+              --application-name "$CODE_DEPLOY_APP_NAME" \
+              --deployment-group-name "$CODE_DEPLOY_GROUP_NAME" \
+              --include-only-statuses Created Queued InProgress \
+              --query 'deployments[0]' --output text)
+            if [ -z "$ACTIVE" ] || [ "$ACTIVE" = "None" ]; then
+              echo "No active CodeDeploy deployments."
+              exit 0
+            fi
+            echo "Active deployment $ACTIVE — waiting ($i/60)..."
+            sleep 15
+          done
+          echo "Timed out waiting for active deployment; stopping it."
+          ACTIVE=$(aws deploy list-deployments \
+            --application-name "$CODE_DEPLOY_APP_NAME" \
+            --deployment-group-name "$CODE_DEPLOY_GROUP_NAME" \
+            --include-only-statuses Created Queued InProgress \
+            --query 'deployments[0]' --output text)
+          if [ -n "$ACTIVE" ] && [ "$ACTIVE" != "None" ]; then
+            aws deploy stop-deployment --deployment-id "$ACTIVE" --auto-rollback-enabled || true
+            sleep 20
+          fi
+
       - name: Create CodeDeploy deployment
         id: deploy
         run: |
