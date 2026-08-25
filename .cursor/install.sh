@@ -4,6 +4,14 @@
 set -euo pipefail
 
 REPO_DIR="$(pwd)"
+# The venv lives at a stable absolute path, NOT inside the repo. Environment
+# builds run install at /workspace but a booted agent's checkout lands at a
+# different path (e.g. /agent/repos/anime-project); a repo-relative venv would
+# not be found after that relocation. An absolute $HOME path is consistent
+# across build time and every boot.
+VENV_DIR="$HOME/venv"
+PY="$VENV_DIR/bin/python"
+
 # config/settings.py hardcodes this AWS RDS endpoint. We point it at a local
 # MariaDB instead of the production database, without touching application code.
 RDS_HOST="aniverse-rds.cj2o4oeeykic.ap-northeast-2.rds.amazonaws.com"
@@ -28,11 +36,11 @@ sudo apt-get install -y --no-install-recommends \
   mariadb-client
 
 echo "== Python virtualenv & dependencies =="
-if [ ! -x "$REPO_DIR/venv/bin/python" ]; then
-  python3 -m venv "$REPO_DIR/venv"
+if [ ! -x "$PY" ]; then
+  python3 -m venv "$VENV_DIR"
 fi
-"$REPO_DIR/venv/bin/pip" install --upgrade pip
-"$REPO_DIR/venv/bin/pip" install -r "$REPO_DIR/requirements.txt"
+"$PY" -m pip install --upgrade pip
+"$PY" -m pip install -r "$REPO_DIR/requirements.txt"
 
 echo "== Point the hardcoded RDS host at local MariaDB =="
 if ! grep -q "$RDS_HOST" /etc/hosts; then
@@ -76,8 +84,8 @@ fi
 
 echo "== Django migrations & static files =="
 cd "$REPO_DIR"
-"$REPO_DIR/venv/bin/python" manage.py migrate --noinput
-"$REPO_DIR/venv/bin/python" manage.py collectstatic --noinput
+"$PY" manage.py migrate --noinput
+"$PY" manage.py collectstatic --noinput
 
 # Leave the data directory in a clean state so environment-build snapshots
 # capture a consistent MariaDB datadir. start.sh brings the service back up.
