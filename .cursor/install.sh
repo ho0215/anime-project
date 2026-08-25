@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Idempotent repository bootstrap for the Aniverse Django app.
-# Runs after the repo is checked out (cwd = repo root).
+# Runs on Cursor's default Ubuntu base image after checkout (cwd = repo root).
 set -euo pipefail
 
 REPO_DIR="$(pwd)"
-# config/settings.py hardcodes this AWS RDS endpoint. We point it at the local
+# config/settings.py hardcodes this AWS RDS endpoint. We point it at a local
 # MariaDB instead of the production database, without touching application code.
 RDS_HOST="aniverse-rds.cj2o4oeeykic.ap-northeast-2.rds.amazonaws.com"
 
@@ -12,6 +12,20 @@ RDS_HOST="aniverse-rds.cj2o4oeeykic.ap-northeast-2.rds.amazonaws.com"
 # local development, so placeholder values are enough to let Django start).
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-local-dev-unused}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-local-dev-unused}"
+
+echo "== System packages (MariaDB 10.11 + mysqlclient build deps) =="
+# MariaDB 10.11 matches the origin of the committed SQL dump and satisfies
+# Django 6.x's MariaDB 10.5+ requirement (Ubuntu's MySQL 8.0 does not).
+export DEBIAN_FRONTEND=noninteractive
+sudo apt-get update -y
+sudo apt-get install -y --no-install-recommends \
+  build-essential \
+  pkg-config \
+  python3-dev \
+  python3-venv \
+  default-libmysqlclient-dev \
+  mariadb-server \
+  mariadb-client
 
 echo "== Python virtualenv & dependencies =="
 if [ ! -x "$REPO_DIR/venv/bin/python" ]; then
