@@ -72,7 +72,8 @@ aws s3 sync "$MEDIA_DIR/" "s3://$STATIC_BUCKET_NAME/" \
   --exclude "test_check*" \
   --exclude "*.txt" \
   --exclude "*.txtsudo" \
-  --cache-control "public,max-age=86400"
+  --cache-control "public,max-age=86400" \
+  --only-show-errors
 
 # Also pick up any root-level goods_images/works_images leftovers
 for extra in goods_images works_images; do
@@ -80,13 +81,16 @@ for extra in goods_images works_images; do
     echo "Syncing $ROOT_DIR/$extra → s3://$STATIC_BUCKET_NAME/$extra/"
     aws s3 sync "$ROOT_DIR/$extra/" "s3://$STATIC_BUCKET_NAME/$extra/" \
       --region "$AWS_REGION" \
-      --cache-control "public,max-age=86400"
+      --cache-control "public,max-age=86400" \
+      --only-show-errors || echo "WARN: extra sync $extra returned $?"
   fi
 done
 
-SAMPLE=$(aws s3 ls "s3://$STATIC_BUCKET_NAME/goods_images/" --region "$AWS_REGION" | head -1 | awk '{print $NF}')
+SAMPLE=$(aws s3 ls "s3://$STATIC_BUCKET_NAME/goods_images/" --region "$AWS_REGION" 2>/dev/null | awk '{print $NF}' | head -1 || true)
 if [ -n "$SAMPLE" ]; then
-  URL="https://${STATIC_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/goods_images/${SAMPLE}"
+  # URL-encode is best-effort; ascii names probe fine
+  ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$SAMPLE")
+  URL="https://${STATIC_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/goods_images/${ENC}"
   echo "Probe: $URL"
   CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
   echo "HTTP $CODE"
