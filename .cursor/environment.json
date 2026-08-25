@@ -1,0 +1,13 @@
+{
+  "name": "Aniverse (Django) Dev",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "django",
+      "command": "bash .cursor/start.sh && AWS_ACCESS_KEY_ID=local-dev-unused AWS_SECRET_ACCESS_KEY=local-dev-unused PYTHONUNBUFFERED=1 $HOME/venv/bin/python manage.py runserver 0.0.0.0:8000"
+    }
+  ],
+  "ports": [8000]
+}
