@@ -16,6 +16,7 @@ systemctl restart nginx
 
 echo "=== Restarting Gunicorn via systemd ==="
 systemctl daemon-reload
+systemctl enable aniverse.service
 systemctl restart aniverse.service
 
 # 기동 대기
