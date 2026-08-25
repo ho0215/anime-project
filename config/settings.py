@@ -15,26 +15,50 @@ import environ
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-env = environ.Env()
+env = environ.Env(
+    DJANGO_DEBUG=(bool, True),
+    DB_PORT=(int, 3306),
+    AWS_S3_REGION_NAME=(str, 'ap-northeast-2'),
+    USE_HTTPS=(bool, False),
+)
+# EC2 user_data 가 /etc/aniverse.env 에도 복사해 둠 (CodeDeploy 동기화 대비)
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+if os.path.exists('/etc/aniverse.env'):
+    environ.Env.read_env('/etc/aniverse.env')
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-)x9%%=s-bba)r@a+j+2dei8u*1%y7l7d76y9!0xgvw_@j=-+vu'
+SECRET_KEY = env(
+    'DJANGO_SECRET_KEY',
+    default='django-insecure-)x9%%=s-bba)r@a+j+2dei8u*1%y7l7d76y9!0xgvw_@j=-+vu',
+)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DJANGO_DEBUG')
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['*'])
 
 # ALB를 통한 POST 요청(로그인, 폼 제출 등) 시 CSRF 차단 방지
-CSRF_TRUSTED_ORIGINS = [
-    'http://*.elb.amazonaws.com',
-    'https://*.elb.amazonaws.com',
-    'http://localhost',
-    'http://127.0.0.1',
-]
+CSRF_TRUSTED_ORIGINS = env.list(
+    'DJANGO_CSRF_TRUSTED_ORIGINS',
+    default=[
+        'http://*.elb.amazonaws.com',
+        'https://*.elb.amazonaws.com',
+        'http://localhost',
+        'http://127.0.0.1',
+    ],
+)
+
+# HTTP ALB 만 쓰는 동안 Secure 쿠키/HTTPS 강제 비활성
+USE_HTTPS = env('USE_HTTPS')
+SECURE_SSL_REDIRECT = USE_HTTPS and not DEBUG
+SESSION_COOKIE_SECURE = USE_HTTPS and not DEBUG
+CSRF_COOKIE_SECURE = USE_HTTPS and not DEBUG
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if USE_HTTPS else None
+
+# AI 챗봇 (Gemini) — EC2 .env / systemd EnvironmentFile 에서 로드
+GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
+GEMINI_MODEL = env('GEMINI_MODEL', default='gemini-3.6-flash')
 
 
 # Application definition
@@ -97,11 +121,14 @@ ASGI_APPLICATION = 'config.asgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'aniverse',
-        'USER': 'admin',
-        'PASSWORD': 'admin1234!',
-        'HOST': 'aniverse-rds.cj2o4oeeykic.ap-northeast-2.rds.amazonaws.com',
-        'PORT': '3306',
+        'NAME': env('DB_NAME', default='aniverse'),
+        'USER': env('DB_USER', default='admin'),
+        'PASSWORD': env('DB_PASSWORD', default='admin1234!'),
+        'HOST': env(
+            'DB_HOST',
+            default='aniverse-rds.cj2o4oeeykic.ap-northeast-2.rds.amazonaws.com',
+        ),
+        'PORT': env('DB_PORT'),
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES', NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
@@ -164,23 +191,35 @@ CHANNEL_LAYERS = {
 }
 
 # AWS S3 기본 설정
-AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')         # IAM 사용자 액세스 키
-AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY') # IAM 사용자 시크릿 키
-AWS_STORAGE_BUCKET_NAME = 'your-s3-bucket-name'      # S3 버킷 이름
-AWS_S3_REGION_NAME = 'ap-northeast-2'                # 서울 리전
+# EC2에서는 IAM Instance Profile 을 쓰므로 키가 비어 있어도 boto3 기본 체인으로 동작한다.
+AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default=None)
+AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default=None)
+AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME', default='')
+AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME')
 
 # S3 파일 덮어쓰기 방지 및 URL 설정
 AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = 'public-read' # 또는 필요에 따라 'private'
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
-
-# Django 4.2 이상 기준 스토리지 백엔드 설정
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-    },
-    "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage", 
-        # 정적 파일(CSS/JS)도 S3로 분리하려면 위 백엔드를 S3Boto3Storage로 변경
-    },
-}
+AWS_DEFAULT_ACL = env('AWS_DEFAULT_ACL', default=None)
+AWS_QUERYSTRING_AUTH = False
+if AWS_STORAGE_BUCKET_NAME:
+    AWS_S3_CUSTOM_DOMAIN = (
+        f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
+    )
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+else:
+    # 로컬/버킷 미설정 시 파일시스템 스토리지
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }

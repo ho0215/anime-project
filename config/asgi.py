@@ -1,26 +1,30 @@
 """
 ASGI config for config project.
 
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
+Exposes the ASGI callable as module-level ``application``.
+Import order matters: set DJANGO_SETTINGS_MODULE and initialize Django
+before importing apps that touch models/settings (Channels consumers).
 """
 
-# config/asgi.py
 import os
+
 from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
-import deal.routing # 🛠️ deal 앱 라우팅 임포트
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
-application = ProtocolTypeRouter({
-    "http": get_asgi_application(),
-    "websocket": AuthMiddlewareStack(
-        URLRouter(
-            deal.routing.websocket_urlpatterns # 🛠️ 여기 매칭 변경
-        )
-    ),
-})
+# Initialize Django before importing routing / consumers.
+django_asgi_app = get_asgi_application()
+
+from channels.auth import AuthMiddlewareStack  # noqa: E402
+from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
+
+import deal.routing  # noqa: E402
+
+application = ProtocolTypeRouter(
+    {
+        "http": django_asgi_app,
+        "websocket": AuthMiddlewareStack(
+            URLRouter(deal.routing.websocket_urlpatterns)
+        ),
+    }
+)

@@ -1,32 +1,38 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 PROJECT_DIR="/home/ubuntu/aniverse"
-cd $PROJECT_DIR
+
+echo "=== Restore .env if CodeDeploy wiped it ==="
+if [ ! -f "$PROJECT_DIR/.env" ] && [ -f /etc/aniverse.env ]; then
+  cp /etc/aniverse.env "$PROJECT_DIR/.env"
+  chown ubuntu:ubuntu "$PROJECT_DIR/.env"
+  chmod 600 "$PROJECT_DIR/.env"
+fi
 
 echo "=== Restarting Nginx ==="
 nginx -t
 systemctl restart nginx
 
-echo "=== Stopping existing gunicorn processes ==="
-pkill -f gunicorn || true
-sleep 2
+echo "=== Restarting Daphne via systemd ==="
+systemctl daemon-reload
+systemctl enable aniverse.service
+systemctl restart aniverse.service
 
-echo "=== Starting Gunicorn Server ==="
-# Nginx 프록시를 받으므로 127.0.0.1 로컬 바인딩
-nohup $PROJECT_DIR/venv/bin/gunicorn \
-  --bind 127.0.0.1:8000 \
-  --workers 2 \
-  --worker-class sync \
-  config.wsgi:application > $PROJECT_DIR/server.log 2>&1 &
+# 기동 대기
+for i in $(seq 1 30); do
+  if systemctl is-active --quiet aniverse.service; then
+    if curl -sf "http://127.0.0.1:8000/health/" >/dev/null 2>&1; then
+      echo "Daphne and Nginx started successfully."
+      systemctl --no-pager --full status aniverse.service || true
+      exit 0
+    fi
+  fi
+  sleep 1
+done
 
-sleep 3
-
-if pgrep -f gunicorn > /dev/null; then
-    echo "Gunicorn and Nginx started successfully."
-    exit 0
-else
-    echo "Failed to start Gunicorn."
-    cat $PROJECT_DIR/server.log
-    exit 1
-fi
+echo "Failed to start Daphne."
+journalctl -u aniverse.service -n 80 --no-pager || true
+[ -f "$PROJECT_DIR/daphne-access.log" ] && tail -n 50 "$PROJECT_DIR/daphne-access.log" || true
+[ -f "$PROJECT_DIR/gunicorn-error.log" ] && cat "$PROJECT_DIR/gunicorn-error.log" || true
+exit 1

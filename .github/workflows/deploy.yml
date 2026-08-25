@@ -1,39 +1,267 @@
 name: Django CD Pipeline (CodeDeploy)
 
+# Run workflow 버튼은 기본 브랜치(main)에 workflow_dispatch 가 있어야 보임.
+# 머지 전 테스트용으로 feature 브랜치 push 에도 동작하게 함.
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
+      - cursor/terraform-cicd-automation
+  workflow_dispatch:
+    inputs:
+      restore_db:
+        description: "SSM으로 data/aniverse_backup.sql 을 RDS에 복원"
+        type: boolean
+        default: false
+      inject_gemini:
+        description: "SSM으로 GEMINI_API_KEY 를 EC2 .env 에 주입 후 재시작"
+        type: boolean
+        default: true
 
 env:
   AWS_REGION: ap-northeast-2
-  S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}  # 또는 vars.S3_BUCKET_NAME
-  CODE_DEPLOY_APP_NAME: aniverse-app
-  CODE_DEPLOY_GROUP_NAME: aniverse-deployment-group
+  S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+  CODE_DEPLOY_APP_NAME: ${{ vars.CODE_DEPLOY_APP_NAME || 'aniverse-app' }}
+  CODE_DEPLOY_GROUP_NAME: ${{ vars.CODE_DEPLOY_GROUP_NAME || 'aniverse-deployment-group' }}
+  ASG_NAME: aniverse-asg
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: 1. 저장소 코드 가져오기
-      uses: actions/checkout@v4  # v3에서 v4로 변경
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: 2. AWS 인증 정보 설정
-      uses: aws-actions/configure-aws-credentials@v4  # v2에서 v4로 변경 (필수!)
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: 3. 프로젝트 파일 압축
-      run: zip -r deploy.zip . -x "*.git*"
+      - name: Sync media to public S3 bucket
+        env:
+          # vars/secret 없으면 현재 dev 버킷명 사용 (스크립트가 aniverse-static* 자동탐색도 함)
+          STATIC_BUCKET_NAME: ${{ vars.STATIC_BUCKET_NAME }}
+        run: |
+          chmod +x scripts/sync_media_to_s3.sh
+          if [ -z "${STATIC_BUCKET_NAME:-}" ]; then
+            export STATIC_BUCKET_NAME="aniverse-static-ho0215-dev-2026-679583587966-ap-northeast-2"
+          fi
+          bash scripts/sync_media_to_s3.sh
 
-    - name: 4. 압축 파일을 S3에 업로드
-      run: aws s3 cp deploy.zip s3://$S3_BUCKET_NAME/deploy.zip
+      - name: Package application
+        run: |
+          zip -r deploy.zip . \
+            -x "*.git*" \
+            -x "*venv*" \
+            -x "*.cursor*" \
+            -x "*__pycache__*" \
+            -x "*.pyc" \
+            -x "mydb_backup.sql" \
+            -x "media/*" \
+            -x "media (2)/*" \
+            -x "staticfiles/*" \
+            -x ".env"
 
-    - name: 5. CodeDeploy 배포 지시
-      run: |
-        aws deploy create-deployment \
-          --application-name ${{ env.CODE_DEPLOY_APP_NAME }} \
-          --deployment-config-name CodeDeployDefault.OneAtATime \
-          --deployment-group-name ${{ env.CODE_DEPLOY_GROUP_NAME }} \
-          --s3-location bucket=$S3_BUCKET_NAME,bundleType=zip,key=deploy.zip
+      - name: Upload artifact to S3
+        run: aws s3 cp deploy.zip "s3://${S3_BUCKET_NAME}/deploy.zip"
+
+      - name: Wait for any in-progress CodeDeploy to finish
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            ACTIVE=$(aws deploy list-deployments \
+              --application-name "$CODE_DEPLOY_APP_NAME" \
+              --deployment-group-name "$CODE_DEPLOY_GROUP_NAME" \
+              --include-only-statuses Created Queued InProgress \
+              --query 'deployments[0]' --output text)
+            if [ -z "$ACTIVE" ] || [ "$ACTIVE" = "None" ]; then
+              echo "No active CodeDeploy deployments."
+              exit 0
+            fi
+            echo "Active deployment $ACTIVE — waiting ($i/60)..."
+            sleep 15
+          done
+          echo "Timed out waiting for active deployment; stopping it."
+          ACTIVE=$(aws deploy list-deployments \
+            --application-name "$CODE_DEPLOY_APP_NAME" \
+            --deployment-group-name "$CODE_DEPLOY_GROUP_NAME" \
+            --include-only-statuses Created Queued InProgress \
+            --query 'deployments[0]' --output text)
+          if [ -n "$ACTIVE" ] && [ "$ACTIVE" != "None" ]; then
+            aws deploy stop-deployment --deployment-id "$ACTIVE" --auto-rollback-enabled || true
+            sleep 20
+          fi
+
+      - name: Create CodeDeploy deployment
+        id: deploy
+        run: |
+          DEPLOY_ID=$(aws deploy create-deployment \
+            --application-name "$CODE_DEPLOY_APP_NAME" \
+            --deployment-config-name CodeDeployDefault.OneAtATime \
+            --deployment-group-name "$CODE_DEPLOY_GROUP_NAME" \
+            --s3-location "bucket=${S3_BUCKET_NAME},bundleType=zip,key=deploy.zip" \
+            --query deploymentId \
+            --output text)
+          echo "deployment_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
+          echo "Deployment ID: $DEPLOY_ID" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Wait for deployment to succeed
+        id: wait
+        run: |
+          aws deploy wait deployment-successful --deployment-id "${{ steps.deploy.outputs.deployment_id }}"
+          echo "Deployment succeeded" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve ASG instance IDs
+        id: instances
+        if: success()
+        run: |
+          IDS=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-names "$ASG_NAME" \
+            --query "AutoScalingGroups[0].Instances[?LifecycleState=='InService'].InstanceId" \
+            --output text)
+          echo "ids=$IDS" >> "$GITHUB_OUTPUT"
+          echo "InService instances: $IDS" >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$IDS" ] || [ "$IDS" = "None" ]; then
+            echo "No InService ASG instances found" >&2
+            exit 1
+          fi
+
+      - name: Inject GEMINI_API_KEY via SSM (existing instances)
+        if: >
+          success() &&
+          (github.event_name == 'push' ||
+           (github.event_name == 'workflow_dispatch' && inputs.inject_gemini))
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GEMINI_API_KEY:-}" ]; then
+            echo "GEMINI_API_KEY secret is empty — skip inject." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "Add repo secret GEMINI_API_KEY (Google AI Studio key) then re-run deploy." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          export GEMINI_API_KEY
+          # AWS-RunShellScript 기본 셸은 dash → 전체 스크립트를 base64로 감싸 bash 로 실행
+          python3 <<'PY'
+          import base64, json, os
+          key = os.environ["GEMINI_API_KEY"]
+          key_b64 = base64.b64encode(key.encode()).decode()
+          script = f"""set -euo pipefail
+          KEY=$(printf %s '{key_b64}' | base64 -d)
+          python3 /home/ubuntu/aniverse/scripts/set_env_key.py --key GEMINI_API_KEY --value "$KEY" /home/ubuntu/aniverse/.env /etc/aniverse.env
+          python3 /home/ubuntu/aniverse/scripts/set_env_key.py --key GEMINI_MODEL --value gemini-3.6-flash /home/ubuntu/aniverse/.env /etc/aniverse.env
+          chown ubuntu:ubuntu /home/ubuntu/aniverse/.env
+          chmod 600 /home/ubuntu/aniverse/.env /etc/aniverse.env
+          systemctl restart aniverse.service
+          sleep 3
+          systemctl is-active aniverse.service
+          unset KEY
+          """
+          # dedent-ish: strip leading spaces from each line for cleaner bash
+          script = "\n".join(line.lstrip() for line in script.splitlines()) + "\n"
+          script_b64 = base64.b64encode(script.encode()).decode()
+          params = {"commands": [f"echo {script_b64} | base64 -d | bash"]}
+          with open("/tmp/ssm-gemini-params.json", "w", encoding="utf-8") as f:
+              json.dump(params, f)
+          PY
+          for ID in ${{ steps.instances.outputs.ids }}; do
+            echo "Injecting GEMINI_API_KEY on $ID"
+            CMD_ID=$(aws ssm send-command \
+              --instance-ids "$ID" \
+              --document-name "AWS-RunShellScript" \
+              --comment "Inject GEMINI_API_KEY and restart aniverse" \
+              --parameters "file:///tmp/ssm-gemini-params.json" \
+              --query Command.CommandId --output text)
+            aws ssm wait command-executed --command-id "$CMD_ID" --instance-id "$ID" || true
+            aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$ID" \
+              --query '{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' \
+              --output json | tee "/tmp/gemini-$ID.json"
+            STATUS=$(python3 -c "import json;print(json.load(open('/tmp/gemini-$ID.json'))['Status'])")
+            if [ "$STATUS" != "Success" ]; then
+              echo "GEMINI inject failed on $ID status=$STATUS" >&2
+              exit 1
+            fi
+          done
+          echo "GEMINI_API_KEY injected on ASG instances" >> "$GITHUB_STEP_SUMMARY"
+      - name: Restore DB from SQL dump via SSM
+        if: >
+          success() &&
+          (contains(github.event.head_commit.message, '[restore-db]') ||
+           (github.event_name == 'workflow_dispatch' && inputs.restore_db))
+        run: |
+          set -euo pipefail
+          # RDS 는 공유 리소스 — ASG 인스턴스 중 하나에서만 복원
+          ID=$(echo "${{ steps.instances.outputs.ids }}" | awk '{print $1}')
+          echo "Restoring DB on $ID only"
+          # AWS-RunShellScript 기본 셸은 dash(/bin/sh) → bash -lc 로 실행
+          python3 <<'PY'
+          import json
+          params = {
+              "commands": [
+                  "bash -lc 'set -euo pipefail; chmod +x /home/ubuntu/aniverse/scripts/restore_db.sh; bash /home/ubuntu/aniverse/scripts/restore_db.sh'"
+              ]
+          }
+          with open("/tmp/ssm-restore-params.json", "w", encoding="utf-8") as f:
+              json.dump(params, f)
+          PY
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Restore aniverse_backup.sql to RDS" \
+            --timeout-seconds 1800 \
+            --parameters "file:///tmp/ssm-restore-params.json" \
+            --query Command.CommandId --output text)
+          echo "SSM CommandId=$CMD_ID instance=$ID"
+          aws ssm wait command-executed --command-id "$CMD_ID" --instance-id "$ID" || true
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$ID" \
+            --query '{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' \
+            --output json | tee "/tmp/restore-$ID.json"
+          STATUS=$(python3 -c "import json;print(json.load(open('/tmp/restore-$ID.json'))['Status'])")
+          if [ "$STATUS" != "Success" ]; then
+            echo "DB restore failed on $ID status=$STATUS" >&2
+            exit 1
+          fi
+          echo "DB restore completed" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dump CodeDeploy failure details
+        if: failure() && steps.deploy.outputs.deployment_id != ''
+        run: |
+          DEPLOY_ID="${{ steps.deploy.outputs.deployment_id }}"
+          echo "### CodeDeploy failure details" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployment ID: $DEPLOY_ID" >> "$GITHUB_STEP_SUMMARY"
+          aws deploy get-deployment --deployment-id "$DEPLOY_ID" --output json | tee /tmp/deploy.json
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          d=json.load(open("/tmp/deploy.json"))
+          info=d.get("deploymentInfo",{})
+          print(json.dumps({
+            "status": info.get("status"),
+            "errorInformation": info.get("errorInformation"),
+            "deploymentOverview": info.get("deploymentOverview"),
+          }, indent=2, ensure_ascii=False))
+          PY
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          TARGETS=$(aws deploy list-deployment-targets --deployment-id "$DEPLOY_ID" --query 'targetIds' --output text)
+          for t in $TARGETS; do
+            echo "---- target $t ----"
+            aws deploy get-deployment-target --deployment-id "$DEPLOY_ID" --target-id "$t" --output json | tee "/tmp/target-$t.json"
+            echo "#### Target \`$t\`" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            python3 - <<PY >> "$GITHUB_STEP_SUMMARY"
+          import json
+          t=json.load(open("/tmp/target-$t.json"))
+          di=t.get("deploymentTarget",{}).get("instanceTarget",{})
+          print(json.dumps({
+            "status": di.get("status"),
+            "lifecycleEvents": [
+              {"name": e.get("lifecycleEventName"), "status": e.get("status"),
+               "diagnostics": (e.get("diagnostics") or {}).get("message")}
+              for e in di.get("lifecycleEvents", [])
+            ],
+          }, indent=2, ensure_ascii=False))
+          PY
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          done
