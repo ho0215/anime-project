@@ -11,17 +11,25 @@ if [ ! -f "$PROJECT_DIR/.env" ] && [ -f /etc/aniverse.env ]; then
   chmod 600 "$PROJECT_DIR/.env"
 fi
 
-echo "=== Updating system and installing OS dependencies ==="
+echo "=== Installing OS dependencies (idempotent; also done in user_data) ==="
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y \
   default-libmysqlclient-dev build-essential pkg-config \
-  python3-dev python3-venv python3-pip nginx nfs-common awscli
+  python3-dev python3-venv python3-pip nginx nfs-common awscli curl
 
-echo "=== Configuring Nginx ==="
+# mysqlclient 빌드에 필수 — 과거 EC2에서 mysql_config 없어 pip 실패하던 지점
+if ! command -v mysql_config >/dev/null 2>&1; then
+  echo "ERROR: mysql_config not found after apt install. default-libmysqlclient-dev missing?" >&2
+  dpkg -l 'libmysql*' 'default-libmysql*' || true
+  exit 1
+fi
+echo "mysql_config OK: $(mysql_config --version)"
+
+echo "=== Configuring Nginx (proxy to Gunicorn) ==="
 cat << 'EOF' > /etc/nginx/sites-available/aniverse
 server {
-    listen 80;
+    listen 80 default_server;
     server_name _;
 
     client_max_body_size 128M;
@@ -50,11 +58,10 @@ server {
 EOF
 
 rm -f /etc/nginx/sites-enabled/default
-ln -sf /etc/nginx/sites-available/aniverse /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/aniverse /etc/nginx/sites-enabled/aniverse
 
 echo "=== Ensure Gunicorn systemd unit exists ==="
-if [ ! -f /etc/systemd/system/aniverse.service ]; then
-  cat > /etc/systemd/system/aniverse.service <<'UNIT'
+cat > /etc/systemd/system/aniverse.service <<'UNIT'
 [Unit]
 Description=Aniverse Django (Gunicorn)
 After=network.target
@@ -78,9 +85,7 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 UNIT
-fi
 systemctl daemon-reload
-systemctl enable aniverse.service
 
 chown -R ubuntu:ubuntu "$PROJECT_DIR"
 
@@ -89,12 +94,19 @@ rm -rf "$PROJECT_DIR/venv"
 python3 -m venv "$PROJECT_DIR/venv"
 chown -R ubuntu:ubuntu "$PROJECT_DIR/venv"
 
-echo "=== Installing python requirements ==="
-"$PROJECT_DIR/venv/bin/pip" install --upgrade pip
+echo "=== Installing python requirements (mysqlclient needs build deps above) ==="
+"$PROJECT_DIR/venv/bin/pip" install --upgrade pip wheel setuptools
+# 실패 원인을 로그에 남기기 위해 mysqlclient 를 먼저 설치 시도
+"$PROJECT_DIR/venv/bin/pip" install "mysqlclient>=2.2.0"
 "$PROJECT_DIR/venv/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
 
+# 런타임 import 스모크 테스트
+"$PROJECT_DIR/venv/bin/python" - <<'PY'
+import django, mysqlclient, gunicorn  # noqa: F401
+print("python deps import OK", django.get_version())
+PY
+
 echo "=== Running Django migrations & collectstatic ==="
-# .env 가 있으면 RDS/S3 설정이 적용된다.
 set -a
 # shellcheck disable=SC1091
 [ -f "$PROJECT_DIR/.env" ] && . "$PROJECT_DIR/.env"
@@ -103,5 +115,8 @@ set +a
 "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" migrate --noinput \
   || "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" migrate --fake-initial
 "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" collectstatic --noinput
+
+# venv 가 준비된 뒤에만 enable (user_data 단계에서는 enable 하지 않음)
+systemctl enable aniverse.service
 
 echo "=== Dependency installation completed successfully ==="

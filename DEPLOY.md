@@ -5,7 +5,7 @@
 
 ## 배포 흐름
 
-1. `anime-project-infra` 에서 Terraform Apply → ALB / ASG / RDS / S3 / CodeDeploy 생성
+1. `anime-project-infra` 에서 Terraform Apply → ALB / ASG / RDS / S3 / CodeDeploy / **SSM endpoints** 생성
 2. Apply Output 의 `deploy_bucket_name` 을 이 저장소 Secret `S3_BUCKET_NAME` 에 등록
 3. `main` 푸시 → `.github/workflows/deploy.yml` → S3 zip 업로드 → CodeDeploy
 
@@ -26,5 +26,28 @@
 
 ## EC2 런타임
 
-Launch Template user_data 가 `/etc/aniverse.env` 와 systemd `aniverse.service` 를 준비합니다.
-CodeDeploy `install_dependencies.sh` / `start_server.sh` 는 Gunicorn을 **systemd** 로 재시작합니다.
+Launch Template user_data 가 다음을 준비합니다.
+
+- `amazon-ssm-agent` (SSM 접속)
+- `default-libmysqlclient-dev` 등 **mysqlclient 빌드 의존성**
+- nginx 임시 `/health/` (CodeDeploy 전 ALB unhealthy 방지)
+- `/etc/aniverse.env` + systemd unit 파일
+
+CodeDeploy `install_dependencies.sh` 는 apt를 다시 확인하고 `mysql_config` 존재 여부를 검사한 뒤 venv/pip를 수행합니다.
+`start_server.sh` 는 Gunicorn을 **systemd** (`aniverse.service`) 로 재시작합니다.
+
+### SSM 접속 (infra 저장소 스크립트)
+
+```bash
+# anime-project-infra 에서
+ASG_NAME=aniverse-asg ./scripts/ssm-connect.sh
+```
+
+### 과거 라이브러리 오류 대응
+
+증상: CodeDeploy 중 `pip install mysqlclient` 실패 (`mysql_config` / `MySQL.h` not found)
+
+원인: EC2에 MySQL 클라이언트 개발 패키지가 없었음
+
+조치: user_data + `install_dependencies.sh` 양쪽에
+`default-libmysqlclient-dev build-essential pkg-config python3-dev` 설치 및 `mysql_config` preflight 검사
