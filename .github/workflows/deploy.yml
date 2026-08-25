@@ -140,7 +140,7 @@ jobs:
           script = f"""set -euo pipefail
           KEY=$(printf %s '{key_b64}' | base64 -d)
           python3 /home/ubuntu/aniverse/scripts/set_env_key.py --key GEMINI_API_KEY --value "$KEY" /home/ubuntu/aniverse/.env /etc/aniverse.env
-          python3 /home/ubuntu/aniverse/scripts/set_env_key.py --key GEMINI_MODEL --value gemini-2.0-flash /home/ubuntu/aniverse/.env /etc/aniverse.env
+          python3 /home/ubuntu/aniverse/scripts/set_env_key.py --key GEMINI_MODEL --value gemini-3.6-flash /home/ubuntu/aniverse/.env /etc/aniverse.env
           chown ubuntu:ubuntu /home/ubuntu/aniverse/.env
           chmod 600 /home/ubuntu/aniverse/.env /etc/aniverse.env
           systemctl restart aniverse.service
