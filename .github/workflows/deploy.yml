@@ -60,6 +60,48 @@ jobs:
           echo "Deployment ID: $DEPLOY_ID" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Wait for deployment to succeed
+        id: wait
         run: |
           aws deploy wait deployment-successful --deployment-id "${{ steps.deploy.outputs.deployment_id }}"
           echo "Deployment succeeded" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dump CodeDeploy failure details
+        if: failure() && steps.deploy.outputs.deployment_id != ''
+        run: |
+          DEPLOY_ID="${{ steps.deploy.outputs.deployment_id }}"
+          echo "### CodeDeploy failure details" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployment ID: $DEPLOY_ID" >> "$GITHUB_STEP_SUMMARY"
+          aws deploy get-deployment --deployment-id "$DEPLOY_ID" --output json | tee /tmp/deploy.json
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          d=json.load(open("/tmp/deploy.json"))
+          info=d.get("deploymentInfo",{})
+          print(json.dumps({
+            "status": info.get("status"),
+            "errorInformation": info.get("errorInformation"),
+            "deploymentOverview": info.get("deploymentOverview"),
+          }, indent=2, ensure_ascii=False))
+          PY
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          TARGETS=$(aws deploy list-deployment-targets --deployment-id "$DEPLOY_ID" --query 'targetIds' --output text)
+          for t in $TARGETS; do
+            echo "---- target $t ----"
+            aws deploy get-deployment-target --deployment-id "$DEPLOY_ID" --target-id "$t" --output json | tee "/tmp/target-$t.json"
+            echo "#### Target \`$t\`" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            python3 - <<PY >> "$GITHUB_STEP_SUMMARY"
+          import json
+          t=json.load(open("/tmp/target-$t.json"))
+          di=t.get("deploymentTarget",{}).get("instanceTarget",{})
+          print(json.dumps({
+            "status": di.get("status"),
+            "lifecycleEvents": [
+              {"name": e.get("lifecycleEventName"), "status": e.get("status"),
+               "diagnostics": (e.get("diagnostics") or {}).get("message")}
+              for e in di.get("lifecycleEvents", [])
+            ],
+          }, indent=2, ensure_ascii=False))
+          PY
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          done
