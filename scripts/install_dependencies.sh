@@ -110,10 +110,10 @@ print("python deps import OK", django.get_version(), MySQLdb.version_info)
 PY
 
 echo "=== Running Django migrations & collectstatic ==="
-set -a
-# shellcheck disable=SC1091
-[ -f "$PROJECT_DIR/.env" ] && . "$PROJECT_DIR/.env"
-set +a
+# .env 는 config/settings.py 의 django-environ 이 직접 읽는다.
+# bash 로 source 하지 말 것 — SECRET_KEY 의 특수문자 때문에
+#   /home/ubuntu/aniverse/.env: line 1: syntax error near unexpected token ...
+# 가 발생한다 (CodeDeploy AfterInstall exit code 2).
 
 "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" migrate --noinput \
   || "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" migrate --fake-initial
