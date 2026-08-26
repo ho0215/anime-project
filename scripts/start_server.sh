@@ -3,11 +3,46 @@ set -euo pipefail
 
 PROJECT_DIR="/home/ubuntu/aniverse"
 
-echo "=== Restore .env if CodeDeploy wiped it ==="
-if [ ! -f "$PROJECT_DIR/.env" ] && [ -f /etc/aniverse.env ]; then
+echo "=== Ensure runtime .env (DB + S3 bucket) ==="
+chmod +x "$PROJECT_DIR/scripts/ensure_runtime_env.sh" 2>/dev/null || true
+if [ -x "$PROJECT_DIR/scripts/ensure_runtime_env.sh" ]; then
+  bash "$PROJECT_DIR/scripts/ensure_runtime_env.sh" || echo "WARN: ensure_runtime_env failed" >&2
+elif [ ! -f "$PROJECT_DIR/.env" ] && [ -f /etc/aniverse.env ]; then
   cp /etc/aniverse.env "$PROJECT_DIR/.env"
   chown ubuntu:ubuntu "$PROJECT_DIR/.env"
   chmod 600 "$PROJECT_DIR/.env"
+fi
+
+# Nginx 가 /media·/static 을 읽을 수 있도록 ( /home/ubuntu 750 이면 전체 403 )
+mkdir -p "$PROJECT_DIR/media" "$PROJECT_DIR/staticfiles"
+chmod +x "$PROJECT_DIR/scripts/fix_web_perms.sh" 2>/dev/null || true
+bash "$PROJECT_DIR/scripts/fix_web_perms.sh" || true
+
+# S3 에 미디어가 있으면 EFS/local 로도 동기화 (/media/ fallback + 신규 업로드 전 대비)
+BUCKET=""
+if [ -f "$PROJECT_DIR/.env" ]; then
+  BUCKET=$(grep -E '^AWS_STORAGE_BUCKET_NAME=' "$PROJECT_DIR/.env" | head -1 | cut -d= -f2- | tr -d "'\"")
+fi
+if [ -z "$BUCKET" ] && [ -f /etc/aniverse.env ]; then
+  BUCKET=$(grep -E '^AWS_STORAGE_BUCKET_NAME=' /etc/aniverse.env | head -1 | cut -d= -f2- | tr -d "'\"")
+fi
+if [ -n "$BUCKET" ] && command -v aws >/dev/null 2>&1; then
+  echo "=== Sync media from s3://$BUCKET → $PROJECT_DIR/media ==="
+  aws s3 sync "s3://$BUCKET/" "$PROJECT_DIR/media/" \
+    --region "${AWS_REGION:-ap-northeast-2}" \
+    --exclude "test_check*" \
+    --only-show-errors || echo "WARN: media sync from S3 failed" >&2
+  chown -R ubuntu:ubuntu "$PROJECT_DIR/media" || true
+  bash "$PROJECT_DIR/scripts/fix_web_perms.sh" || true
+fi
+
+# 브라우저가 /favicon.ico 를 직접 요청하는 경우 대비
+if [ -f "$PROJECT_DIR/staticfiles/img/favicon.ico" ] || [ -f "$PROJECT_DIR/static/img/favicon.ico" ]; then
+  mkdir -p /var/www/aniverse-static
+  SRC="$PROJECT_DIR/staticfiles/img/favicon.ico"
+  [ -f "$SRC" ] || SRC="$PROJECT_DIR/static/img/favicon.ico"
+  cp "$SRC" /var/www/aniverse-static/favicon.ico 2>/dev/null || true
+  chmod 644 /var/www/aniverse-static/favicon.ico 2>/dev/null || true
 fi
 
 echo "=== Restarting Nginx ==="
@@ -19,10 +54,12 @@ systemctl daemon-reload
 systemctl enable aniverse.service
 systemctl restart aniverse.service
 
-# 기동 대기
+# 기동 대기 — Host 를 도메인으로 보내 DisallowedHost 방지
+HEALTH_HOST="${DJANGO_HEALTH_HOST:-aniverse.my}"
 for i in $(seq 1 30); do
   if systemctl is-active --quiet aniverse.service; then
-    if curl -sf "http://127.0.0.1:8000/health/" >/dev/null 2>&1; then
+    if curl -sf -H "Host: ${HEALTH_HOST}" "http://127.0.0.1:8000/health/" >/dev/null 2>&1 \
+      || curl -sf "http://127.0.0.1:8000/health/" >/dev/null 2>&1; then
       echo "Daphne and Nginx started successfully."
       systemctl --no-pager --full status aniverse.service || true
       exit 0

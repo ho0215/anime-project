@@ -5,7 +5,12 @@ PROJECT_DIR="/home/ubuntu/aniverse"
 cd "$PROJECT_DIR"
 
 echo "=== Preserve runtime env files (written by EC2 user_data) ==="
-if [ ! -f "$PROJECT_DIR/.env" ] && [ -f /etc/aniverse.env ]; then
+# CodeDeploy 번들은 .env 를 포함하지 않음. 부분 .env(GEMINI만 등)면
+# DB_* / AWS_STORAGE_BUCKET_NAME 이 빠져 사진·DB 가 깨짐 → ensure 스크립트로 복구.
+chmod +x "$PROJECT_DIR/scripts/ensure_runtime_env.sh" 2>/dev/null || true
+if [ -f "$PROJECT_DIR/scripts/ensure_runtime_env.sh" ]; then
+  bash "$PROJECT_DIR/scripts/ensure_runtime_env.sh" || echo "WARN: ensure_runtime_env failed" >&2
+elif [ ! -f "$PROJECT_DIR/.env" ] && [ -f /etc/aniverse.env ]; then
   cp /etc/aniverse.env "$PROJECT_DIR/.env"
   chown ubuntu:ubuntu "$PROJECT_DIR/.env"
   chmod 600 "$PROJECT_DIR/.env"
@@ -34,17 +39,30 @@ server {
 
     client_max_body_size 128M;
 
+    location = /favicon.ico {
+        alias /home/ubuntu/aniverse/staticfiles/img/favicon.ico;
+        access_log off;
+        log_not_found off;
+        expires 7d;
+    }
+
     location /static/ {
         alias /home/ubuntu/aniverse/staticfiles/;
+        expires 7d;
+        add_header Cache-Control "public";
     }
 
     location /media/ {
         alias /home/ubuntu/aniverse/media/;
+        expires 1d;
+        add_header Cache-Control "public";
     }
 
     location /health/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
+        # ALB 헬스체크 Host 는 타겟 IP 라 Django ALLOWED_HOSTS 에 걸릴 수 있음 → Nginx 에서 직접 응답
+        access_log off;
+        default_type text/plain;
+        return 200 'OK';
     }
 
     # Django Channels (deal chat)
@@ -56,7 +74,8 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        # ALB 가 TLS 종료 후 HTTP 로 넘기므로 클라이언트 프로토콜을 그대로 전달
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
         proxy_read_timeout 86400;
     }
 
@@ -65,7 +84,7 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
     }
 }
 EOF
@@ -131,6 +150,10 @@ echo "=== Running Django migrations & collectstatic ==="
 "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" migrate --noinput \
   || "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" migrate --fake-initial
 "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" collectstatic --noinput
+
+echo "=== Fix nginx read perms on static/media (avoid HTTP 403) ==="
+chmod +x "$PROJECT_DIR/scripts/fix_web_perms.sh" 2>/dev/null || true
+bash "$PROJECT_DIR/scripts/fix_web_perms.sh" || true
 
 # venv 가 준비된 뒤에만 enable (user_data 단계에서는 enable 하지 않음)
 systemctl enable aniverse.service
