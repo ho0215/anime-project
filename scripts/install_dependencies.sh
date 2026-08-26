@@ -39,12 +39,23 @@ server {
 
     client_max_body_size 128M;
 
+    location = /favicon.ico {
+        alias /home/ubuntu/aniverse/staticfiles/img/favicon.ico;
+        access_log off;
+        log_not_found off;
+        expires 7d;
+    }
+
     location /static/ {
         alias /home/ubuntu/aniverse/staticfiles/;
+        expires 7d;
+        add_header Cache-Control "public";
     }
 
     location /media/ {
         alias /home/ubuntu/aniverse/media/;
+        expires 1d;
+        add_header Cache-Control "public";
     }
 
     location /health/ {
@@ -139,6 +150,10 @@ echo "=== Running Django migrations & collectstatic ==="
 "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" migrate --noinput \
   || "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" migrate --fake-initial
 "$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/manage.py" collectstatic --noinput
+
+echo "=== Fix nginx read perms on static/media (avoid HTTP 403) ==="
+chmod +x "$PROJECT_DIR/scripts/fix_web_perms.sh" 2>/dev/null || true
+bash "$PROJECT_DIR/scripts/fix_web_perms.sh" || true
 
 # venv 가 준비된 뒤에만 enable (user_data 단계에서는 enable 하지 않음)
 systemctl enable aniverse.service

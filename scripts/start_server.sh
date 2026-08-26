@@ -13,11 +13,10 @@ elif [ ! -f "$PROJECT_DIR/.env" ] && [ -f /etc/aniverse.env ]; then
   chmod 600 "$PROJECT_DIR/.env"
 fi
 
-# Nginx 가 /media/ 를 읽을 수 있도록 (ubuntu-only 700 이면 403)
-mkdir -p "$PROJECT_DIR/media"
-chmod 755 "$PROJECT_DIR/media" || true
-find "$PROJECT_DIR/media" -type d -exec chmod 755 {} + 2>/dev/null || true
-find "$PROJECT_DIR/media" -type f -exec chmod 644 {} + 2>/dev/null || true
+# Nginx 가 /media·/static 을 읽을 수 있도록 ( /home/ubuntu 750 이면 전체 403 )
+mkdir -p "$PROJECT_DIR/media" "$PROJECT_DIR/staticfiles"
+chmod +x "$PROJECT_DIR/scripts/fix_web_perms.sh" 2>/dev/null || true
+bash "$PROJECT_DIR/scripts/fix_web_perms.sh" || true
 
 # S3 에 미디어가 있으면 EFS/local 로도 동기화 (/media/ fallback + 신규 업로드 전 대비)
 BUCKET=""
@@ -34,8 +33,16 @@ if [ -n "$BUCKET" ] && command -v aws >/dev/null 2>&1; then
     --exclude "test_check*" \
     --only-show-errors || echo "WARN: media sync from S3 failed" >&2
   chown -R ubuntu:ubuntu "$PROJECT_DIR/media" || true
-  find "$PROJECT_DIR/media" -type d -exec chmod 755 {} + 2>/dev/null || true
-  find "$PROJECT_DIR/media" -type f -exec chmod 644 {} + 2>/dev/null || true
+  bash "$PROJECT_DIR/scripts/fix_web_perms.sh" || true
+fi
+
+# 브라우저가 /favicon.ico 를 직접 요청하는 경우 대비
+if [ -f "$PROJECT_DIR/staticfiles/img/favicon.ico" ] || [ -f "$PROJECT_DIR/static/img/favicon.ico" ]; then
+  mkdir -p /var/www/aniverse-static
+  SRC="$PROJECT_DIR/staticfiles/img/favicon.ico"
+  [ -f "$SRC" ] || SRC="$PROJECT_DIR/static/img/favicon.ico"
+  cp "$SRC" /var/www/aniverse-static/favicon.ico 2>/dev/null || true
+  chmod 644 /var/www/aniverse-static/favicon.ico 2>/dev/null || true
 fi
 
 echo "=== Restarting Nginx ==="
