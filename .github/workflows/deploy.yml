@@ -96,85 +96,70 @@ jobs:
 
       - name: Ensure CodeDeploy agent is active on ASG instances
         run: |
-          set -euo pipefail
-          # inactive 로 오래 기다리지 말고, SSM 으로 설치/기동까지 시도
-          START_CMD='#!/bin/bash
-          set -eux
-          export DEBIAN_FRONTEND=noninteractive
-          if ! command -v ruby >/dev/null 2>&1; then
-            apt-get update -y
-            apt-get install -y ruby-full wget
-          fi
-          if [ ! -d /opt/codedeploy-agent ]; then
-            cd /tmp
-            wget -q https://aws-codedeploy-ap-northeast-2.s3.ap-northeast-2.amazonaws.com/latest/install -O install
-            chmod +x install
-            ./install auto
-          fi
-          systemctl enable codedeploy-agent || true
-          systemctl restart codedeploy-agent || systemctl start codedeploy-agent || true
-          sleep 2
-          systemctl is-active codedeploy-agent
-          '
+          set -uo pipefail
+          # GitHub Actions IAM 에 ssm:SendCommand 가 없으면 여기서 실패함.
+          # 에이전트는 로컬/SSM 세션으로 이미 켜 둔 경우가 많으므로, 실패해도 배포는 진행.
+          REMOTE='set -eux; export DEBIAN_FRONTEND=noninteractive; command -v ruby >/dev/null || (apt-get update -y && apt-get install -y ruby-full wget); if [ ! -d /opt/codedeploy-agent ]; then cd /tmp && wget -q https://aws-codedeploy-ap-northeast-2.s3.ap-northeast-2.amazonaws.com/latest/install -O install && chmod +x install && ./install auto; fi; systemctl enable codedeploy-agent || true; systemctl restart codedeploy-agent || systemctl start codedeploy-agent || true; sleep 2; systemctl is-active codedeploy-agent'
 
-          echo "Installing/starting codedeploy-agent via SSM if needed..."
-          for i in $(seq 1 20); do
-            IDS=$(aws autoscaling describe-auto-scaling-groups \
-              --auto-scaling-group-names "$ASG_NAME" \
-              --query 'AutoScalingGroups[0].Instances[?LifecycleState==`InService`].InstanceId' \
-              --output text)
-            if [ -z "${IDS// /}" ]; then
-              echo "No InService instances yet ($i/20)"
-              sleep 15
+          OK=0
+          TOTAL=0
+          SSM_OK=0
+          IDS=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-names "$ASG_NAME" \
+            --query 'AutoScalingGroups[0].Instances[?LifecycleState==`InService`].InstanceId' \
+            --output text || true)
+
+          if [ -z "${IDS// /}" ]; then
+            echo "WARNING: no InService ASG instances; proceeding to create-deployment" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          for id in $IDS; do
+            TOTAL=$((TOTAL + 1))
+            PARAMS=$(jq -nc --arg c "$REMOTE" '{commands:[$c]}' 2>/dev/null || echo "")
+            if [ -z "$PARAMS" ]; then
+              echo "$id: jq missing; skip SSM ensure"
               continue
             fi
-
-            OK=0
-            TOTAL=0
-            for id in $IDS; do
-              TOTAL=$((TOTAL + 1))
-              CMD_ID=$(aws ssm send-command \
-                --instance-ids "$id" \
-                --document-name "AWS-RunShellScript" \
-                --parameters commands="$START_CMD" \
-                --query 'Command.CommandId' --output text 2>/dev/null || true)
-              if [ -z "$CMD_ID" ] || [ "$CMD_ID" = "None" ]; then
-                echo "$id: SSM send-command failed"
-                continue
-              fi
-              # 설치가 걸릴 수 있어 대기
-              for _ in $(seq 1 20); do
-                INV=$(aws ssm get-command-invocation \
-                  --command-id "$CMD_ID" --instance-id "$id" \
-                  --query '[Status,StandardOutputContent,StandardErrorContent]' \
-                  --output text 2>/dev/null || echo "Pending	")
-                ST=$(echo "$INV" | awk '{print $1}')
-                if [ "$ST" = "Success" ] || [ "$ST" = "Failed" ] || [ "$ST" = "Cancelled" ] || [ "$ST" = "TimedOut" ]; then
-                  break
-                fi
-                sleep 3
-              done
-              OUT=$(aws ssm get-command-invocation \
-                --command-id "$CMD_ID" --instance-id "$id" \
-                --query 'StandardOutputContent' --output text 2>/dev/null || echo "")
-              ERR=$(aws ssm get-command-invocation \
-                --command-id "$CMD_ID" --instance-id "$id" \
-                --query 'StandardErrorContent' --output text 2>/dev/null || echo "")
-              echo "$id: stdout='${OUT//$'\n'/ }' stderr='${ERR//$'\n'/ }'"
-              if echo "$OUT" | grep -q '^active'; then
-                OK=$((OK + 1))
-              fi
-            done
-
-            echo "Agents active: $OK / $TOTAL (attempt $i/20)"
-            if [ "$TOTAL" -gt 0 ] && [ "$OK" -eq "$TOTAL" ]; then
-              echo "All InService instances have codedeploy-agent active."
-              exit 0
+            set +e
+            CMD_ID=$(aws ssm send-command \
+              --instance-ids "$id" \
+              --document-name "AWS-RunShellScript" \
+              --parameters "$PARAMS" \
+              --timeout-seconds 300 \
+              --query 'Command.CommandId' --output text 2>/tmp/ssm-err.txt)
+            RC=$?
+            set -e
+            if [ $RC -ne 0 ] || [ -z "$CMD_ID" ] || [ "$CMD_ID" = "None" ]; then
+              echo "$id: SSM send-command failed (often missing ssm:SendCommand on CI IAM)"
+              cat /tmp/ssm-err.txt 2>/dev/null || true
+              continue
             fi
-            sleep 10
+            SSM_OK=$((SSM_OK + 1))
+            for _ in $(seq 1 40); do
+              ST=$(aws ssm get-command-invocation \
+                --command-id "$CMD_ID" --instance-id "$id" \
+                --query 'Status' --output text 2>/dev/null || echo Pending)
+              if [ "$ST" = "Success" ] || [ "$ST" = "Failed" ] || [ "$ST" = "Cancelled" ] || [ "$ST" = "TimedOut" ]; then
+                break
+              fi
+              sleep 3
+            done
+            OUT=$(aws ssm get-command-invocation \
+              --command-id "$CMD_ID" --instance-id "$id" \
+              --query 'StandardOutputContent' --output text 2>/dev/null || echo "")
+            echo "$id: $OUT"
+            if echo "$OUT" | grep -q '^active'; then
+              OK=$((OK + 1))
+            fi
           done
-          echo "ERROR: codedeploy-agent still not active on all instances" >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+
+          echo "Agents confirmed active via SSM: $OK / $TOTAL (ssm ok: $SSM_OK)" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$OK" -lt "$TOTAL" ]; then
+            echo "WARNING: could not verify all agents via SSM. If you already started codedeploy-agent on the instances, deploy will continue." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          # 게이트로 막지 않음 — create-deployment 가 실제 실패를 보여 줌
+          exit 0
 
       - name: Create CodeDeploy deployment
         id: deploy
