@@ -4,8 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANIVERSE</title>
-    
+    <title>{% block title %}ANIVERSE{% endblock %}</title>
+    <meta name="theme-color" content="#7C3AED">
+    <meta name="description" content="{% block meta_description %}서브컬쳐 커뮤니티 · 애니 · 거래 · 창작{% endblock %}">
+    <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+    <link rel="icon" href="{% static 'img/favicon-32.png' %}" type="image/png" sizes="32x32">
+    <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="any">
+    <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+    <meta property="og:site_name" content="ANIVERSE">
+    <meta property="og:title" content="{% block og_title %}ANIVERSE{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{% static 'img/aniverse-icon.png' %}{% endblock %}">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
