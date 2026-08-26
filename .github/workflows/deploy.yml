@@ -113,6 +113,24 @@ jobs:
           aws deploy wait deployment-successful --deployment-id "${{ steps.deploy.outputs.deployment_id }}"
           echo "Deployment succeeded" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Dump CodeDeploy failure details
+        if: failure() && steps.deploy.outputs.deployment_id != ''
+        run: |
+          DID="${{ steps.deploy.outputs.deployment_id }}"
+          echo "### CodeDeploy failure ($DID)" >> "$GITHUB_STEP_SUMMARY"
+          aws deploy get-deployment --deployment-id "$DID" \
+            --query 'deploymentInfo.{status:status,error:errorInformation}' \
+            --output json | tee /tmp/cd-dep.json
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/cd-dep.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          for tid in $(aws deploy list-deployment-targets --deployment-id "$DID" --query 'targetIds[]' --output text); do
+            echo "---- target $tid ----" | tee -a "$GITHUB_STEP_SUMMARY"
+            aws deploy get-deployment-target --deployment-id "$DID" --target-id "$tid" \
+              --query 'deploymentTarget.instanceTarget.lifecycleEvents[?status==`Failed`].[lifecycleEventName,diagnostics.logTail]' \
+              --output text | tee -a "$GITHUB_STEP_SUMMARY" || true
+          done
+
       - name: Resolve ASG instance IDs
         id: instances
         if: success()
