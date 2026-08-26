@@ -19,10 +19,12 @@ systemctl daemon-reload
 systemctl enable aniverse.service
 systemctl restart aniverse.service
 
-# 기동 대기
+# 기동 대기 — Host 를 도메인으로 보내 DisallowedHost 방지
+HEALTH_HOST="${DJANGO_HEALTH_HOST:-aniverse.my}"
 for i in $(seq 1 30); do
   if systemctl is-active --quiet aniverse.service; then
-    if curl -sf "http://127.0.0.1:8000/health/" >/dev/null 2>&1; then
+    if curl -sf -H "Host: ${HEALTH_HOST}" "http://127.0.0.1:8000/health/" >/dev/null 2>&1 \
+      || curl -sf "http://127.0.0.1:8000/health/" >/dev/null 2>&1; then
       echo "Daphne and Nginx started successfully."
       systemctl --no-pager --full status aniverse.service || true
       exit 0
