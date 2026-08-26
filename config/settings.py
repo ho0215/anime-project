@@ -184,10 +184,24 @@ CKEDITOR_UPLOAD_PATH = 'uploads/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# REDIS_URL 이 있으면(운영: ElastiCache) Redis 채널 레이어를 쓰고, 없으면(로컬 개발)
+# 인메모리로 폴백한다. ASG가 인스턴스를 2대 이상 띄우는 운영 환경에서는 인메모리
+# 레이어를 쓰면 서로 다른 인스턴스에 붙은 유저끼리 실시간 메시지가 전달되지 않는다.
+REDIS_URL = env('REDIS_URL', default='')
+
 CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
+    "default": (
+        {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+            },
+        }
+        if REDIS_URL
+        else {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    ),
 }
 
 # AWS S3 기본 설정

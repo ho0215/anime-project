@@ -142,19 +142,48 @@
     const currentUserId = parseInt("{{ request.user.id }}");
     
     const wsScheme = window.location.protocol === "https:" ? "wss://" : "ws://";
-    const chatSocket = new WebSocket(
-        wsScheme + window.location.host + '/ws/deal/chat/' + roomId + '/'
-    );
+    const wsUrl = wsScheme + window.location.host + '/ws/deal/chat/' + roomId + '/';
+
+    let chatSocket;
+    let reconnectAttempts = 0;
+    let heartbeatTimer = null;
 
     const chatLog = document.querySelector('#chat-log');
     chatLog.scrollTop = chatLog.scrollHeight;
 
-    chatSocket.onopen = function(e) {
+    function connectChatSocket() {
+        chatSocket = new WebSocket(wsUrl);
+        chatSocket.onopen = handleOpen;
+        chatSocket.onmessage = handleMessage;
+        chatSocket.onclose = handleClose;
+    }
+
+    function handleOpen(e) {
         console.log("웹소켓 서버와 성공적으로 연결되었습니다.");
-    };
+        reconnectAttempts = 0;
+
+        // ALB idle timeout(기본 60초)에 걸려 조용한 채팅방의 연결이 끊기지 않도록
+        // 주기적으로 빈 프레임을 보낸다. 서버는 'message' 필드가 없으면 무시한다.
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = setInterval(function () {
+            if (chatSocket.readyState === WebSocket.OPEN) {
+                chatSocket.send(JSON.stringify({ type: 'ping' }));
+            }
+        }, 25000);
+    }
+
+    // 네트워크 순단, ALB idle timeout, 배포로 인한 인스턴스 재시작 등으로 소켓이
+    // 끊겨도 지수 백오프로 자동 재연결한다 (최대 10초 간격).
+    function handleClose(e) {
+        console.error('채팅 소켓이 종료되었습니다. 재연결을 시도합니다.');
+        clearInterval(heartbeatTimer);
+        const delay = Math.min(1000 * (2 ** reconnectAttempts), 10000);
+        reconnectAttempts += 1;
+        setTimeout(connectChatSocket, delay);
+    }
 
     // 실시간 메시지 수신 및 분기 처리 구역
-    chatSocket.onmessage = function(e) {
+    function handleMessage(e) {
         const data = JSON.parse(e.data);
         const message = data.message;
 
@@ -201,17 +230,20 @@
         const chatLog = document.getElementById('chat-log');
         chatLog.insertAdjacentHTML('beforeend', messageHtml);
         chatLog.scrollTop = chatLog.scrollHeight;
-    };
+    }
 
-    chatSocket.onclose = function(e) {
-        console.error('채팅 소켓이 비정상적으로 종료되었습니다.');
-    };
+    connectChatSocket();
 
     function sendMessage() {
         const messageInputDom = document.querySelector('#chat-message-input');
         const message = messageInputDom.value.trim();
-        
+
         if(message === "") return;
+
+        if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
+            console.error('채팅 소켓이 아직 연결되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+            return;
+        }
 
         // 🛠️ 백엔드가 누가 보냈는지 확실히 알 수 있도록 user 필드에 내 ID를 명시해서 쏩니다.
         chatSocket.send(JSON.stringify({
