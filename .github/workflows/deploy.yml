@@ -94,14 +94,61 @@ jobs:
             sleep 20
           fi
 
+      - name: Wait for CodeDeploy agent on ASG instances
+        run: |
+          set -euo pipefail
+          echo "Waiting until ASG instances have codedeploy-agent active..."
+          for i in $(seq 1 40); do
+            IDS=$(aws autoscaling describe-auto-scaling-groups \
+              --auto-scaling-group-names "$ASG_NAME" \
+              --query 'AutoScalingGroups[0].Instances[?LifecycleState==`InService`].InstanceId' \
+              --output text)
+            if [ -z "${IDS// /}" ]; then
+              echo "No InService instances yet ($i/40)"
+              sleep 15
+              continue
+            fi
+            OK=0
+            TOTAL=0
+            for id in $IDS; do
+              TOTAL=$((TOTAL + 1))
+              # SSM 으로 에이전트 상태 확인 (실패해도 계속)
+              OUT=$(aws ssm send-command \
+                --instance-ids "$id" \
+                --document-name "AWS-RunShellScript" \
+                --parameters 'commands=["systemctl is-active codedeploy-agent"]' \
+                --query 'Command.CommandId' --output text 2>/dev/null || true)
+              if [ -z "$OUT" ] || [ "$OUT" = "None" ]; then
+                echo "$id: SSM send-command failed"
+                continue
+              fi
+              sleep 3
+              STATUS=$(aws ssm get-command-invocation \
+                --command-id "$OUT" --instance-id "$id" \
+                --query 'StandardOutputContent' --output text 2>/dev/null || echo "")
+              echo "$id: agent status='${STATUS//$'\n'/}'"
+              if echo "$STATUS" | grep -q '^active'; then
+                OK=$((OK + 1))
+              fi
+            done
+            echo "Agents active: $OK / $TOTAL"
+            if [ "$TOTAL" -gt 0 ] && [ "$OK" -eq "$TOTAL" ]; then
+              echo "All InService instances have codedeploy-agent active."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "WARNING: not all agents became active in time; proceeding anyway" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Create CodeDeploy deployment
         id: deploy
         run: |
           DEPLOY_ID=$(aws deploy create-deployment \
             --application-name "$CODE_DEPLOY_APP_NAME" \
-            --deployment-config-name CodeDeployDefault.OneAtATime \
+            --deployment-config-name CodeDeployDefault.AllAtOnce \
             --deployment-group-name "$CODE_DEPLOY_GROUP_NAME" \
             --s3-location "bucket=${S3_BUCKET_NAME},bundleType=zip,key=deploy.zip" \
+            --ignore-application-stop-failures \
             --query deploymentId \
             --output text)
           echo "deployment_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
