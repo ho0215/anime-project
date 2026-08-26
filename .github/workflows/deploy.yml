@@ -94,51 +94,87 @@ jobs:
             sleep 20
           fi
 
-      - name: Wait for CodeDeploy agent on ASG instances
+      - name: Ensure CodeDeploy agent is active on ASG instances
         run: |
           set -euo pipefail
-          echo "Waiting until ASG instances have codedeploy-agent active..."
-          for i in $(seq 1 40); do
+          # inactive 로 오래 기다리지 말고, SSM 으로 설치/기동까지 시도
+          START_CMD='#!/bin/bash
+          set -eux
+          export DEBIAN_FRONTEND=noninteractive
+          if ! command -v ruby >/dev/null 2>&1; then
+            apt-get update -y
+            apt-get install -y ruby-full wget
+          fi
+          if [ ! -d /opt/codedeploy-agent ]; then
+            cd /tmp
+            wget -q https://aws-codedeploy-ap-northeast-2.s3.ap-northeast-2.amazonaws.com/latest/install -O install
+            chmod +x install
+            ./install auto
+          fi
+          systemctl enable codedeploy-agent || true
+          systemctl restart codedeploy-agent || systemctl start codedeploy-agent || true
+          sleep 2
+          systemctl is-active codedeploy-agent
+          '
+
+          echo "Installing/starting codedeploy-agent via SSM if needed..."
+          for i in $(seq 1 20); do
             IDS=$(aws autoscaling describe-auto-scaling-groups \
               --auto-scaling-group-names "$ASG_NAME" \
               --query 'AutoScalingGroups[0].Instances[?LifecycleState==`InService`].InstanceId' \
               --output text)
             if [ -z "${IDS// /}" ]; then
-              echo "No InService instances yet ($i/40)"
+              echo "No InService instances yet ($i/20)"
               sleep 15
               continue
             fi
+
             OK=0
             TOTAL=0
             for id in $IDS; do
               TOTAL=$((TOTAL + 1))
-              # SSM 으로 에이전트 상태 확인 (실패해도 계속)
-              OUT=$(aws ssm send-command \
+              CMD_ID=$(aws ssm send-command \
                 --instance-ids "$id" \
                 --document-name "AWS-RunShellScript" \
-                --parameters 'commands=["systemctl is-active codedeploy-agent"]' \
+                --parameters commands="$START_CMD" \
                 --query 'Command.CommandId' --output text 2>/dev/null || true)
-              if [ -z "$OUT" ] || [ "$OUT" = "None" ]; then
+              if [ -z "$CMD_ID" ] || [ "$CMD_ID" = "None" ]; then
                 echo "$id: SSM send-command failed"
                 continue
               fi
-              sleep 3
-              STATUS=$(aws ssm get-command-invocation \
-                --command-id "$OUT" --instance-id "$id" \
+              # 설치가 걸릴 수 있어 대기
+              for _ in $(seq 1 20); do
+                INV=$(aws ssm get-command-invocation \
+                  --command-id "$CMD_ID" --instance-id "$id" \
+                  --query '[Status,StandardOutputContent,StandardErrorContent]' \
+                  --output text 2>/dev/null || echo "Pending	")
+                ST=$(echo "$INV" | awk '{print $1}')
+                if [ "$ST" = "Success" ] || [ "$ST" = "Failed" ] || [ "$ST" = "Cancelled" ] || [ "$ST" = "TimedOut" ]; then
+                  break
+                fi
+                sleep 3
+              done
+              OUT=$(aws ssm get-command-invocation \
+                --command-id "$CMD_ID" --instance-id "$id" \
                 --query 'StandardOutputContent' --output text 2>/dev/null || echo "")
-              echo "$id: agent status='${STATUS//$'\n'/}'"
-              if echo "$STATUS" | grep -q '^active'; then
+              ERR=$(aws ssm get-command-invocation \
+                --command-id "$CMD_ID" --instance-id "$id" \
+                --query 'StandardErrorContent' --output text 2>/dev/null || echo "")
+              echo "$id: stdout='${OUT//$'\n'/ }' stderr='${ERR//$'\n'/ }'"
+              if echo "$OUT" | grep -q '^active'; then
                 OK=$((OK + 1))
               fi
             done
-            echo "Agents active: $OK / $TOTAL"
+
+            echo "Agents active: $OK / $TOTAL (attempt $i/20)"
             if [ "$TOTAL" -gt 0 ] && [ "$OK" -eq "$TOTAL" ]; then
               echo "All InService instances have codedeploy-agent active."
               exit 0
             fi
-            sleep 15
+            sleep 10
           done
-          echo "WARNING: not all agents became active in time; proceeding anyway" >> "$GITHUB_STEP_SUMMARY"
+          echo "ERROR: codedeploy-agent still not active on all instances" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
       - name: Create CodeDeploy deployment
         id: deploy
