@@ -5,19 +5,15 @@ PROJECT_DIR="/home/ubuntu/aniverse"
 cd "$PROJECT_DIR"
 
 echo "=== Preserve runtime env files (written by EC2 user_data) ==="
-# CodeDeploy 번들은 .env 를 포함하지 않음. GEMINI inject 등으로 부분 .env 만
-# 생긴 경우 DB_* 가 빠져 앱/restore 가 깨지므로 /etc/aniverse.env 로 복구.
-need_env_restore=0
-if [ ! -f "$PROJECT_DIR/.env" ]; then
-  need_env_restore=1
-elif ! grep -qE '^DB_HOST=' "$PROJECT_DIR/.env" 2>/dev/null; then
-  need_env_restore=1
-fi
-if [ "$need_env_restore" -eq 1 ] && [ -f /etc/aniverse.env ] && grep -qE '^DB_HOST=' /etc/aniverse.env 2>/dev/null; then
+# CodeDeploy 번들은 .env 를 포함하지 않음. 부분 .env(GEMINI만 등)면
+# DB_* / AWS_STORAGE_BUCKET_NAME 이 빠져 사진·DB 가 깨짐 → ensure 스크립트로 복구.
+chmod +x "$PROJECT_DIR/scripts/ensure_runtime_env.sh" 2>/dev/null || true
+if [ -f "$PROJECT_DIR/scripts/ensure_runtime_env.sh" ]; then
+  bash "$PROJECT_DIR/scripts/ensure_runtime_env.sh" || echo "WARN: ensure_runtime_env failed" >&2
+elif [ ! -f "$PROJECT_DIR/.env" ] && [ -f /etc/aniverse.env ]; then
   cp /etc/aniverse.env "$PROJECT_DIR/.env"
   chown ubuntu:ubuntu "$PROJECT_DIR/.env"
   chmod 600 "$PROJECT_DIR/.env"
-  echo "Restored $PROJECT_DIR/.env from /etc/aniverse.env"
 fi
 
 echo "=== Installing OS dependencies (idempotent; also done in user_data) ==="
