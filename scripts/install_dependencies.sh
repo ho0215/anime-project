@@ -43,8 +43,10 @@ server {
     }
 
     location /health/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
+        # ALB 헬스체크 Host 는 타겟 IP 라 Django ALLOWED_HOSTS 에 걸릴 수 있음 → Nginx 에서 직접 응답
+        access_log off;
+        default_type text/plain;
+        return 200 'OK';
     }
 
     # Django Channels (deal chat)
@@ -56,7 +58,8 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        # ALB 가 TLS 종료 후 HTTP 로 넘기므로 클라이언트 프로토콜을 그대로 전달
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
         proxy_read_timeout 86400;
     }
 
@@ -65,7 +68,7 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
     }
 }
 EOF
