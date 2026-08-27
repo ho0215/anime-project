@@ -64,36 +64,46 @@ def deal_board(request):
 @login_required(login_url='accounts:login')
 def deal_add(request):
     if request.method == 'POST':
-        title = request.POST.get('title')
-        category = request.POST.get('category')
-        
+        title = (request.POST.get('title') or '').strip()
+        category = (request.POST.get('category') or '').strip()
+
         anime_title = request.POST.get('anime_title') or request.POST.get('tag')
         if not anime_title:
             anime_title = "기타 장르"
-            
+
         price = request.POST.get('price', 0)
         description = request.POST.get('description') or request.POST.get('content')
-        
+
         shipping_list = request.POST.getlist('shipping') or request.POST.getlist('delivery')
         shipping_methods = ", ".join(shipping_list) if shipping_list else "협의 가능"
-        
-        # 🔥 수정된 부분: HTML의 name="image"와 이름 일치시키기!
+
         uploaded_files = request.FILES.getlist('image')
         main_image = uploaded_files[0] if uploaded_files else None
 
-        # DB 저장
-        Goods.objects.create(
-            seller=request.user,
-            title=title,
-            category=category,
-            anime_title=anime_title,
-            price=int(price) if price else 0,
-            shipping_methods=shipping_methods,
-            description=description if description else "내용 없음",
-            image=main_image,
-            status='sale'
-        )
+        if not title:
+            messages.error(request, '제목을 입력해 주세요.')
+            return redirect('deal:deal_add')
+        if category not in dict(Goods.CATEGORY_CHOICES):
+            messages.error(request, '카테고리를 선택해 주세요.')
+            return redirect('deal:deal_add')
 
+        try:
+            Goods.objects.create(
+                seller=request.user,
+                title=title,
+                category=category,
+                anime_title=anime_title,
+                price=int(price) if price else 0,
+                shipping_methods=shipping_methods,
+                description=description if description else "내용 없음",
+                image=main_image,
+                status='sale'
+            )
+        except Exception:
+            messages.error(request, '상품 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.')
+            return redirect('deal:deal_add')
+
+        messages.success(request, '상품이 등록되었습니다.')
         return redirect('deal:deal_board')
 
     return render(request, 'deal/deal_add.html')

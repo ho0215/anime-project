@@ -102,7 +102,7 @@
 <!-- 자바스크립트 수동 제어 -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    if (document.getElementById("id_content")) {
+    if (document.getElementById("id_content") && typeof tinymce !== "undefined") {
         tinymce.init({
             selector: '#id_content',
             height: 400,
@@ -110,40 +110,48 @@ document.addEventListener("DOMContentLoaded", function() {
             plugins: 'lists link image table code help wordcount',
             toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
             skin: (window.matchMedia("(prefers-color-scheme: dark)").matches ? "oxide-dark" : "oxide"),
-            content_css: (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default")
+            content_css: (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default"),
+            // data:/javascript: URL 등 WAF 오탐을 줄이기 위해 위험한 요소 제한
+            invalid_elements: 'script,iframe,object,embed',
+            extended_valid_elements: 'img[src|alt|width|height]'
         });
     }
 });
 
-// 💡 폼 제출 시 브라우저 기본 검사를 무시하고 자바스크립트로 완벽하게 검증 후 전송
-document.getElementById('post-form').addEventListener('submit', function(e) {
-    e.preventDefault(); // 기본 제출 막기
+function notify(msg) {
+    if (typeof Swal !== "undefined") {
+        Swal.fire("알림", msg, "warning");
+    } else {
+        alert(msg);
+    }
+}
 
-    // 1. TinyMCE 내용을 textarea에 동기화
-    if (typeof tinymce !== 'undefined') {
+// 폼 제출: TinyMCE 동기화 + 검증 후 네이티브 submit (submit 이벤트 재진입 방지)
+document.getElementById("post-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    if (typeof tinymce !== "undefined") {
         tinymce.triggerSave();
     }
 
-    const boardType = document.getElementById('id_board_type').value;
-    const title = document.getElementById('id_title').value.trim();
-    const content = document.getElementById('id_content').value.trim();
+    const boardType = document.getElementById("id_board_type").value;
+    const title = document.getElementById("id_title").value.trim();
+    const content = document.getElementById("id_content").value.trim();
 
-    // 2. 입력값 검증
     if (!boardType) {
-        Swal.fire('알림', '카테고리를 선택해주세요.', 'warning');
+        notify("카테고리를 선택해주세요.");
         return;
     }
     if (!title) {
-        Swal.fire('알림', '제목을 입력해주세요.', 'warning');
+        notify("제목을 입력해주세요.");
         return;
     }
     if (!content) {
-        Swal.fire('알림', '내용을 입력해주세요.', 'warning');
+        notify("내용을 입력해주세요.");
         return;
     }
 
-    // 3. 모든 검증 통과 시 강제 제출
-    this.submit();
+    HTMLFormElement.prototype.submit.call(this);
 });
 
 function clearExistingImage() {
