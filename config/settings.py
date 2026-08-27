@@ -106,6 +106,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'deal.context_processors.deal_unread_count',
             ],
         },
     },
@@ -203,18 +204,6 @@ CHANNEL_LAYERS = {
         }
     ),
 }
-
-# EC2/ASG: REDIS_URL 이 있으면 Redis Channel Layer (멀티 인스턴스 채팅)
-REDIS_URL = env('REDIS_URL', default='')
-if REDIS_URL:
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [REDIS_URL],
-            },
-        },
-    }
 
 # AWS S3 기본 설정
 # EC2에서는 IAM Instance Profile 을 쓰므로 키가 비어 있어도 boto3 기본 체인으로 동작한다.

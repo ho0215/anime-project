@@ -140,6 +140,10 @@
     const roomId = "{{ room.id }}";
     // 1. 이미 선언해두신 안전한 숫자형 내 유저 ID 상수 사용
     const currentUserId = parseInt("{{ request.user.id }}");
+
+    // base.html의 전역 실시간 배지가 "지금 열려서 보고 있는 방"의 알림을 중복으로
+    // 올리지 않도록 현재 방 ID를 전역에 노출해 둔다.
+    window.CURRENT_DEAL_ROOM_ID = roomId;
     
     const wsScheme = window.location.protocol === "https:" ? "wss://" : "ws://";
     const wsUrl = wsScheme + window.location.host + '/ws/deal/chat/' + roomId + '/';

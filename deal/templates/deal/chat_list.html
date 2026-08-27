@@ -67,67 +67,36 @@
 </main>
 
 <script>
-    const wsScheme = window.location.protocol === "https:" ? "wss://" : "ws://";
-    const wsUrl = wsScheme + window.location.host + '/ws/deal/chats/';
+    // 소켓 연결/재연결/하트비트는 base.html이 페이지 전역에서 하나만 관리한다.
+    // 이 페이지는 그 소켓이 받은 메시지를 dealChatUpdate 커스텀 이벤트로 받아서
+    // 방 목록 UI만 갱신한다.
+    document.addEventListener('dealChatUpdate', function (e) {
+        const data = e.detail;
+        const roomId = data.room_id;
+        const latestMessage = data.message;
 
-    let listSocket;
-    let reconnectAttempts = 0;
-    let heartbeatTimer = null;
+        const roomItem = document.querySelector(`#room-${roomId}`);
+        const listContainer = document.querySelector('#chat-room-list');
 
-    function connectListSocket() {
-        listSocket = new WebSocket(wsUrl);
+        if (roomItem) {
+            // 1. 하단 최신 대화 미리보기 문구 변경
+            document.querySelector(`#last-msg-${roomId}`).textContent = latestMessage;
 
-        listSocket.onopen = function () {
-            reconnectAttempts = 0;
-            // ALB idle timeout(기본 60초)에 걸려 연결이 끊기지 않도록 주기적으로
-            // 빈 프레임을 보낸다. 서버(ChatListConsumer)는 미정의 receive라 그냥 무시된다.
-            clearInterval(heartbeatTimer);
-            heartbeatTimer = setInterval(function () {
-                if (listSocket.readyState === WebSocket.OPEN) {
-                    listSocket.send(JSON.stringify({ type: 'ping' }));
-                }
-            }, 25000);
-        };
+            // 2. 안 읽은 배지 카운트 누적 연산
+            let currentUnread = parseInt(roomItem.getAttribute('data-unread')) || 0;
+            currentUnread += 1;
+            roomItem.setAttribute('data-unread', currentUnread);
 
-        listSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            const roomId = data.room_id;
-            const latestMessage = data.message;
+            // 3. 기존 Tailwind CSS 디자인 원본 모양 그대로 실시간 배지 주입
+            const badgeContainer = document.querySelector(`#badge-container-${roomId}`);
+            badgeContainer.innerHTML = `
+                <span class="flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full shadow-sm animate-pulse">
+                    ${currentUnread}
+                </span>`;
 
-            const roomItem = document.querySelector(`#room-${roomId}`);
-            const listContainer = document.querySelector('#chat-room-list');
-
-            if (roomItem) {
-                // 1. 하단 최신 대화 미리보기 문구 변경
-                document.querySelector(`#last-msg-${roomId}`).textContent = latestMessage;
-
-                // 2. 안 읽은 배지 카운트 누적 연산
-                let currentUnread = parseInt(roomItem.getAttribute('data-unread')) || 0;
-                currentUnread += 1;
-                roomItem.setAttribute('data-unread', currentUnread);
-
-                // 3. 기존 Tailwind CSS 디자인 원본 모양 그대로 실시간 배지 주입
-                const badgeContainer = document.querySelector(`#badge-container-${roomId}`);
-                badgeContainer.innerHTML = `
-                    <span class="flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full shadow-sm animate-pulse">
-                        ${currentUnread}
-                    </span>`;
-
-                // 4. 리스트 최상단으로 해당 방 컴포넌트 즉각 배치
-                listContainer.prepend(roomItem);
-            }
-        };
-
-        // 네트워크 순단, ALB idle timeout, 배포로 인한 인스턴스 재시작 등으로 소켓이
-        // 끊겨도 지수 백오프로 자동 재연결한다 (최대 10초 간격).
-        listSocket.onclose = function () {
-            clearInterval(heartbeatTimer);
-            const delay = Math.min(1000 * (2 ** reconnectAttempts), 10000);
-            reconnectAttempts += 1;
-            setTimeout(connectListSocket, delay);
-        };
-    }
-
-    connectListSocket();
+            // 4. 리스트 최상단으로 해당 방 컴포넌트 즉각 배치
+            listContainer.prepend(roomItem);
+        }
+    });
 </script>
 {% endblock %}
