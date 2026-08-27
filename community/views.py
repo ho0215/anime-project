@@ -131,19 +131,36 @@ def post_detail(request, pk):
 @login_required
 def post_create(request):
     if request.method == 'POST':
-        board_type = request.POST.get('board_type')
+        board_type = (request.POST.get('board_type') or '').strip()
+        title = (request.POST.get('title') or '').strip()
+        content = request.POST.get('content') or ''
 
         if board_type == 'notice' and not request.user.is_staff:
             messages.error(request, '공지 사항은 관리자만 작성할 수 있습니다. 카테고리를 다시 선택해 주세요.')
             return redirect('community:post_create')
 
-        Post.objects.create(
-            board_type=board_type,
-            title=request.POST.get('title'),
-            content=request.POST.get('content'), 
-            author=request.user,
-            image=request.FILES.get('image'),
-        )
+        if board_type not in dict(Post.BOARD_CHOICES):
+            messages.error(request, '카테고리를 선택해 주세요.')
+            return redirect('community:post_create')
+        if not title:
+            messages.error(request, '제목을 입력해 주세요.')
+            return redirect('community:post_create')
+        if not content.strip():
+            messages.error(request, '내용을 입력해 주세요.')
+            return redirect('community:post_create')
+
+        try:
+            Post.objects.create(
+                board_type=board_type,
+                title=title,
+                content=content,
+                author=request.user,
+                image=request.FILES.get('image'),
+            )
+        except Exception:
+            messages.error(request, '게시글 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.')
+            return redirect('community:post_create')
+        messages.success(request, '게시글이 등록되었습니다.')
         return redirect('community:board_list')
 
     form = PostForm()

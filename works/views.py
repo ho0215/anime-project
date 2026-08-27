@@ -85,11 +85,20 @@ def work_detail(request, pk):
 def work_create(request):
     if request.method == 'POST':
         action = request.POST.get('action', 'publish')
-        target_program = request.POST.get('target_program')
-        category = request.POST.get('category')
-        title = request.POST.get('title')
+        target_program = (request.POST.get('target_program') or '').strip()
+        category = (request.POST.get('category') or '').strip()
+        title = (request.POST.get('title') or '').strip()
         content = clean_content(request.POST.get('content'))
         image = request.FILES.get('image')
+
+        if not target_program or not title or not content:
+            return render(request, 'works/work_form.html', {
+                'error': '원작명, 제목, 내용을 모두 입력해 주세요.',
+                'target_program': target_program,
+                'category': category,
+                'title': title,
+                'content': content,
+            })
 
         # 코스프레/일러스트는 '게시'할 때 사진 필수 (임시저장은 예외)
         if category != 'novel' and action == 'publish' and not image:
@@ -101,18 +110,27 @@ def work_create(request):
                 'content': content,
             })
 
-        work = CreativeWork.objects.create(
-            target_program=target_program,
-            category=category,
-            title=title,                                       
-            content=content,
-            image=image,
-            author=request.user,
-            status='draft' if action == 'draft' else 'published',
-        )
-        extra_images = request.FILES.getlist('extra_images')
-        for img in extra_images:
-            WorkImage.objects.create(work=work, image=img)
+        try:
+            work = CreativeWork.objects.create(
+                target_program=target_program,
+                category=category,
+                title=title,
+                content=content,
+                image=image,
+                author=request.user,
+                status='draft' if action == 'draft' else 'published',
+            )
+            extra_images = request.FILES.getlist('extra_images')
+            for img in extra_images:
+                WorkImage.objects.create(work=work, image=img)
+        except Exception:
+            return render(request, 'works/work_form.html', {
+                'error': '창작물 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+                'target_program': target_program,
+                'category': category,
+                'title': title,
+                'content': content,
+            })
 
         return redirect('works:work_detail', pk=work.pk)
 
