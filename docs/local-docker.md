@@ -8,8 +8,14 @@ docker compose up --build
 ```
 
 - 앱: http://127.0.0.1:8000/
-- 헬스: http://127.0.0.1:8000/health/
+- 헬스: http://127.0.0.1:8000/health/  → `OK`
 - DB: localhost:3307 (호스트에서 접속할 때)
+
+컨테이너끼리 `db:3306` 이 막히는 환경(일부 CI/에이전트)에서는:
+
+```bash
+COMPOSE_DB_HOST=host.docker.internal COMPOSE_DB_PORT=3307 docker compose up --build
+```
 
 종료:
 

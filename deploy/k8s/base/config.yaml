@@ -3,14 +3,17 @@ kind: ConfigMap
 metadata:
   name: aniverse-app-config
 data:
-  DJANGO_DEBUG: "False"
+  DJANGO_DEBUG: "True"
   DJANGO_ALLOWED_HOSTS: "*"
-  USE_HTTPS: "True"
+  DJANGO_CSRF_TRUSTED_ORIGINS: "http://localhost,http://127.0.0.1,http://localhost:8000"
+  USE_HTTPS: "False"
   DB_NAME: aniverse
   DB_USER: aniverse
   DB_HOST: aniverse-db
   DB_PORT: "3306"
   AWS_S3_REGION_NAME: ap-northeast-2
+  RUN_MIGRATE: "true"
+  RUN_COLLECTSTATIC: "false"
 ---
 apiVersion: v1
 kind: Secret
@@ -18,6 +21,6 @@ metadata:
   name: aniverse-app-secrets
 type: Opaque
 stringData:
-  DJANGO_SECRET_KEY: "change-me"
-  DB_PASSWORD: "change-me"
-  # GEMINI_API_KEY: ""
+  DJANGO_SECRET_KEY: "local-k8s-dev-change-me"
+  DB_PASSWORD: "aniversepass"
+  DB_ROOT_PASSWORD: "rootpass"
