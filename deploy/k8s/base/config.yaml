@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aniverse-app-config
+data:
+  DJANGO_DEBUG: "False"
+  DJANGO_ALLOWED_HOSTS: "*"
+  USE_HTTPS: "True"
+  DB_NAME: aniverse
+  DB_USER: aniverse
+  DB_HOST: aniverse-db
+  DB_PORT: "3306"
+  AWS_S3_REGION_NAME: ap-northeast-2
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aniverse-app-secrets
+type: Opaque
+stringData:
+  DJANGO_SECRET_KEY: "change-me"
+  DB_PASSWORD: "change-me"
+  # GEMINI_API_KEY: ""

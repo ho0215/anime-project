@@ -1,0 +1,62 @@
+# Placeholder manifests for EKS (fill image/repo after ECR exists)
+# Apply later: kubectl apply -k deploy/k8s/overlays/dev
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aniverse-web
+  labels:
+    app: aniverse-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aniverse-web
+  template:
+    metadata:
+      labels:
+        app: aniverse-web
+    spec:
+      containers:
+        - name: web
+          image: aniverse:local # → replace with ECR URI:tag
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: aniverse-app-secrets
+                optional: true
+            - configMapRef:
+                name: aniverse-app-config
+                optional: true
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 40
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aniverse-web
+spec:
+  selector:
+    app: aniverse-web
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: ClusterIP
