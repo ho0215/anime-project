@@ -14,8 +14,8 @@ DB는 계속 공개 MariaDB 이미지 + **emptyDir**(StorageClass 없는 랩용)
 
 ## 왜 바로 `image:` 만 바꾸면 안 되나
 
-프라이빗 ECR이라 워커에 **pull 권한(또는 로컬 import)** 이 필요하다.  
-랩 노드에 AWS IAM이 없으면, 예전에 하던 것처럼 **`ctr import`** 가 제일 단순하다.
+프라이빗 ECR이라 워커에 **pull 권한(또는 로컬 이미지)** 이 필요하다.  
+랩에서는 워커에서 `ctr images pull` (아래 절차 A).
 
 (EKS에서는 노드 역할 / IRSA로 pull — 서이 담당)
 
