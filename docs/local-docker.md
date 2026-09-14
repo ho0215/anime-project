@@ -32,7 +32,9 @@ docker build -t aniverse:local .
 
 ## CI
 
-- `.github/workflows/docker-build.yml` — PR/push 시 이미지 **빌드만** (ECR push는 시크릿 연결 후)
+- `.github/workflows/docker-build.yml` — PR/`cursor/**` 는 **빌드만**, `main`(또는 수동 실행)은 **ECR push**
+- 인증: OIDC 권장 (`AWS_ROLE_ARN` + `AWS_USE_OIDC=true`) / 없으면 Access Key fallback
+- 자세한 설정: [ecr-manual-push.md](./ecr-manual-push.md)
 - 기존 `deploy.yml` (CodeDeploy)는 v1용으로 유지
 
 ## 태그 규칙
@@ -48,7 +50,7 @@ ECR 예: `123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:sha-abc123d
 
 ## 다음에 할 일 (AWS)
 
-1. ECR 리포지토리 생성
-2. Actions에 ECR push 활성화
-3. Argo CD가 `deploy/k8s` (또는 Helm) sync
-4. 서이: EKS · Ingress / 윤주: DB StatefulSet 차트와 합치기
+1. ~~ECR 수동 push~~ / ~~Actions ECR push~~ — [ecr-manual-push.md](./ecr-manual-push.md)
+2. 서이: EKS · Ingress · 노드 ECR pull
+3. 윤주: DB StatefulSet / Helm 이미지 URL
+4. 현우: Argo CD가 `deploy/k8s` (또는 Helm) sync

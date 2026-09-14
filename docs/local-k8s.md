@@ -103,6 +103,7 @@ minikube stop
 | DB | compose service | **StatefulSet + PVC** |
 | 다음 | — | 같은 매니페스트 감각으로 EKS |
 
-## 다음에 (AWS)
+## 다음에 (AWS / 랩 ECR)
 
-서이 EKS 준비 → 이미지 ECR → `image:` 를 ECR URI로 바꾸고 apply/Argo sync.
+- **랩에서 ECR 이미지로 올리기:** [lab-k8s-ecr.md](./lab-k8s-ecr.md) (`overlays/lab-ecr`)
+- 서이 EKS 준비 → 노드 ECR pull → 같은 URI로 Ingress까지

@@ -1,0 +1,11 @@
+# ctr import / 노드 로컬 이미지용. ECR에서 kubelet이 직접 pull 할 때는 Always 로 바꾸세요.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aniverse-web
+spec:
+  template:
+    spec:
+      containers:
+        - name: web
+          imagePullPolicy: IfNotPresent
