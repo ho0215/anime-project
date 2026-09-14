@@ -1,0 +1,27 @@
+# 랩: overlays/lab-ecr 를 Argo 가 sync
+# 적용: kubectl apply -f deploy/argocd/application-lab-ecr.yaml
+# (Argo CD 설치 후, argocd 네임스페이스에 Application CRD 가 있어야 함)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aniverse-lab
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ho0215/anime-project.git
+    targetRevision: main
+    path: deploy/k8s/overlays/lab-ecr
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: aniverse
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  # 랩 Secret 은 Git 값 사용. 나중에 SealedSecrets 쓰면 ignore 조정
+  ignoreDifferences: []
