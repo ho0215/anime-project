@@ -104,18 +104,30 @@ terraform output ecr_repository_url
 | `main` push | 빌드 + ECR push (`sha-*`, `latest`) |
 | Actions → Run workflow | 빌드 + ECR push |
 
-필요한 Secrets (CodeDeploy `deploy.yml` 과 동일):
+### 인증 (OIDC 권장)
 
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
+| 우선 | anime-project Settings | 값 |
+|------|--------------------------|-----|
+| 1 | Variable `AWS_ROLE_ARN` | infra bootstrap output `github_actions_app_ecr_role_arn` |
+| 1 | Variable `AWS_USE_OIDC` | `true` |
+| fallback | Secret `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | OIDC 꺼져 있을 때만 |
 
-IAM에 ECR push 권한(`ecr:PutImage` 등)이 있어야 합니다. 수동 push에 쓴 키와 같으면 됩니다.
+OIDC 역할 만들기 (`anime-project-infra`):
 
-확인: GitHub → Actions → **Docker build** → 초록 + Summary에 이미지 URI.
+```bash
+cd bootstrap
+terraform init
+terraform apply
+terraform output github_actions_app_ecr_role_arn
+```
+
+역할 `aniverse-github-actions-ecr` 은 **ECR push만** 허용합니다 (Terraform Admin 역할과 분리).
+
+확인: GitHub → Actions → **Docker build** → Summary에 auth mode **OIDC** + 이미지 URI.
 
 ## 다음에 할 일
 
-1. ~~수동 push 1회~~ / ~~Actions ECR push~~
+1. ~~수동 push 1회~~ / ~~Actions ECR push~~ / **앱 OIDC 켜기**
 2. 서이: EKS 노드/IRSA pull 권한
 3. 윤주: Helm/Kustomize 이미지 URL을 ECR로 교체
-4. 현우: Argo CD가 ECR 태그 sync
+4. 현우: Argo CD · (여유) infra Terraform OIDC 재도전
