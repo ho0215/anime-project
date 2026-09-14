@@ -14,56 +14,50 @@ DB는 계속 공개 MariaDB 이미지 + **emptyDir**(StorageClass 없는 랩용)
 
 ## 왜 바로 `image:` 만 바꾸면 안 되나
 
-프라이빗 ECR이라 워커에 **pull 권한(또는 로컬 import)** 이 필요하다.  
-랩 노드에 AWS IAM이 없으면, 예전에 하던 것처럼 **`ctr import`** 가 제일 단순하다.
+프라이빗 ECR이라 워커에 **pull 권한(또는 로컬 이미지)** 이 필요하다.  
+랩에서는 워커에서 `ctr images pull` (아래 절차 A).
 
 (EKS에서는 노드 역할 / IRSA로 pull — 서이 담당)
 
-## 절차 A — ECR pull → ctr import (랩 권장)
+## 절차 A — 워커에서 ECR `ctr pull` (랩 권장)
 
-### 1) cp1 (aws CLI · docker 있는 곳)
+새 Docker는 `docker save`가 **레이어 없이 수 KB tar**만 만드는 경우가 있습니다.  
+그래서 랩에서는 **wk에서 직접 pull** 합니다.
+
+### cp1
 
 ```bash
 cd ~/Desktop/anime-project
-git pull
-git checkout cursor/lab-k8s-ecr-image-8e41   # 또는 main 머지 후
+git pull   # lab-ecr 브랜치
 
-chmod +x scripts/lab-ecr-import.sh
-./scripts/lab-ecr-import.sh latest
-# 또는: ./scripts/lab-ecr-import.sh sha-xxxxxxxxxxxx
+PASS=$(aws ecr get-login-password --region ap-northeast-2)
+IMG=679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:latest
+
+ssh ho0215@wk1 "sudo ctr -n k8s.io images pull -u AWS:${PASS} ${IMG}"
+ssh ho0215@wk2 "sudo ctr -n k8s.io images pull -u AWS:${PASS} ${IMG}"
 ```
 
-스크립트가 tar 경로와 `scp` / `ctr import` 안내를 출력한다.
-
-### 2) wk1 / wk2
+또는:
 
 ```bash
-sudo ctr -n k8s.io images import ~/aniverse-ecr-latest.tar
+LAB_ECR_PUSH=1 ./scripts/lab-ecr-import.sh latest
+```
+
+### wk1 / wk2 확인
+
+```bash
 sudo ctr -n k8s.io images ls | grep aniverse
 ```
 
-이름이  
-`679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:latest`  
-로 보여야 한다.
+`679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:latest` 가 보여야 함.
 
-### 3) cp1에서 apply
+### cp1 apply
 
 ```bash
-# latest 아니면 태그 맞추기
-# (cd deploy/k8s/overlays/lab-ecr && \
-#    kustomize edit set image aniverse=679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:sha-XXXX)
-
 kubectl apply -k deploy/k8s/overlays/lab-ecr
+kubectl -n aniverse delete pod -l app=aniverse-web
 kubectl -n aniverse get pods -o wide -w
 ```
-
-### 4) 접속
-
-```bash
-kubectl -n aniverse port-forward svc/aniverse-web 8000:80
-# http://127.0.0.1:8000/health/
-```
-
 ## 절차 B — (선택) imagePullSecrets
 
 토큰이 **약 12시간**이라 랩용으로는 A가 낫다. EKS 전에 연습만 할 때:
@@ -94,8 +88,9 @@ kubectl -n aniverse create secret docker-registry ecr-pull \
 
 | 증상 | 대응 |
 |------|------|
-| `ImagePullBackOff` | 워커에 ctr import 안 됨 / 태그 불일치 |
-| `ErrImageNeverPull` | import된 이름과 매니페스트 URI·태그 일치시키기 |
+| `ImagePullBackOff` / no basic auth | 워커에 이미지 없음 → `ctr images pull` 다시 |
+| tar가 수 KB | `docker save` 깨짐(containerd store) → tar 말고 `ctr pull` 사용 |
+| `ErrImageNeverPull` | import/pull된 이름과 매니페스트 URI·태그 일치시키기 |
 | DB `Pending` | lab-ecr 오버레이(emptyDir) 쓰는지 확인 |
 | Calico Unauthorized | `kubectl -n kube-system rollout restart ds/calico-node` |
 
