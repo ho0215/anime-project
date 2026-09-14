@@ -5,6 +5,8 @@ resources:
   - config.yaml
   - db.yaml
   - deployment.yaml
+  - resourcequota.yaml
+  - ingress.yaml
 commonLabels:
   project: aniverse
 labels:
