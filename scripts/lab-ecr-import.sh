@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
-# ECR → docker pull → tar → (안내) 워커 ctr import
-# 사용: ./scripts/lab-ecr-import.sh [tag]
-# 예:   ./scripts/lab-ecr-import.sh latest
-#       ./scripts/lab-ecr-import.sh sha-abc123def456
+# 랩 워커(containerd)에 ECR 이미지를 넣는 도우미.
+#
+# 새 Docker(containerd image store)는 `docker save`가 레이어 없이
+# 수 KB tar만 만드는 경우가 있어, 기본 경로는 워커에서 `ctr images pull` 입니다.
+#
+# 사용:
+#   ./scripts/lab-ecr-import.sh latest
+#   ./scripts/lab-ecr-import.sh sha-abc123def456
+#   WORKERS="ho0215@wk1 ho0215@wk2" ./scripts/lab-ecr-import.sh latest
 set -euo pipefail
 
 REGION="${AWS_REGION:-ap-northeast-2}"
@@ -11,31 +16,51 @@ REPO="${ECR_REPOSITORY:-aniverse}"
 TAG="${1:-latest}"
 REGISTRY="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
 REMOTE="${REGISTRY}/${REPO}:${TAG}"
-TAR="${TMPDIR:-/tmp}/aniverse-ecr-${TAG//\//-}.tar"
+WORKERS="${WORKERS:-ho0215@wk1 ho0215@wk2}"
 
-echo "==> ECR login (${REGION})"
-aws ecr get-login-password --region "${REGION}" \
-  | docker login --username AWS --password-stdin "${REGISTRY}"
+echo "==> ECR auth password"
+PASS="$(aws ecr get-login-password --region "${REGION}")"
+if [ -z "${PASS}" ]; then
+  echo "failed to get ECR password" >&2
+  exit 1
+fi
 
-echo "==> docker pull ${REMOTE}"
-docker pull "${REMOTE}"
+echo "==> image: ${REMOTE}"
+echo
+echo "---- 워커에서 직접 pull (권장) ----"
+for w in ${WORKERS}; do
+  echo "ssh ${w} 'sudo ctr -n k8s.io images pull -u AWS:\$PASS ${REMOTE}'"
+done
+echo
+echo "한 줄로 (cp1에서 실행, PASS 전달):"
+echo "  PASS=\$(aws ecr get-login-password --region ${REGION})"
+for w in ${WORKERS}; do
+  cat <<EOF
+  ssh ${w} "sudo ctr -n k8s.io images pull -u AWS:\${PASS} ${REMOTE}"
+EOF
+done
 
-echo "==> docker save → ${TAR}"
-docker save -o "${TAR}" "${REMOTE}"
-ls -lh "${TAR}"
+# 선택: cp1에서 원격 워커에 바로 pull (SSH 가능하면)
+if [ "${LAB_ECR_PUSH:-}" = "1" ]; then
+  echo
+  echo "==> LAB_ECR_PUSH=1 — ssh로 워커에 ctr pull 실행"
+  for w in ${WORKERS}; do
+    echo "-- ${w}"
+    ssh -o BatchMode=yes "${w}" \
+      "sudo ctr -n k8s.io images pull -u AWS:${PASS} ${REMOTE}"
+    ssh -o BatchMode=yes "${w}" \
+      "sudo ctr -n k8s.io images ls | grep -E '${REPO}|${ACCOUNT}' || true"
+  done
+fi
 
 echo
-echo "OK — 이미지 tar 준비됨."
-echo "워커(wk1/wk2)에 복사 후 import 예:"
-echo "  scp ${TAR} ubuntu@wk1:~/"
-echo "  scp ${TAR} ubuntu@wk2:~/"
-echo "  # 각 워커에서:"
-echo "  sudo ctr -n k8s.io images import ~/(basename ${TAR})"
+echo "---- pull 확인 (각 워커) ----"
 echo "  sudo ctr -n k8s.io images ls | grep aniverse"
 echo
-echo "그다음 cp1에서:"
-echo "  cd ~/Desktop/anime-project   # clone 경로"
-echo "  # 태그 맞추기 (latest 아니면):"
-echo "  (cd deploy/k8s/overlays/lab-ecr && kustomize edit set image aniverse=${REMOTE})"
+echo "---- cp1 apply ----"
 echo "  kubectl apply -k deploy/k8s/overlays/lab-ecr"
+echo "  kubectl -n aniverse delete pod -l app=aniverse-web"
 echo "  kubectl -n aniverse get pods -o wide -w"
+echo
+echo "참고: docker save 경로는 containerd image store에서 깨질 수 있어 사용하지 않습니다."
+echo "      자동 ssh pull: LAB_ECR_PUSH=1 WORKERS=\"ho0215@wk1 ho0215@wk2\" $0 ${TAG}"
