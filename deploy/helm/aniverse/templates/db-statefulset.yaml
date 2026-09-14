@@ -1,0 +1,78 @@
+# persistence.enabled=false (기본, 랩용): emptyDir — StorageClass 없는 클러스터 대응,
+#   Pod 삭제 시 데이터 소실 (deploy/k8s/base/db.yaml 과 동일 동작).
+# persistence.enabled=true  (EKS 등): volumeClaimTemplates 로 PVC 생성.
+#   storageClassName 을 반드시 실제 클러스터 값으로 지정할 것 (values-eks.yaml 참고).
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: aniverse-db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aniverse.labels" . | nindent 4 }}
+    app: aniverse-db
+spec:
+  serviceName: aniverse-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aniverse-db
+  template:
+    metadata:
+      labels:
+        app: aniverse-db
+    spec:
+      containers:
+        - name: mariadb
+          image: {{ .Values.db.image }}
+          ports:
+            - containerPort: {{ .Values.db.port }}
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: aniverse-app-config
+                  key: DB_NAME
+            - name: MYSQL_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: aniverse-app-config
+                  key: DB_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aniverse-app-secrets
+                  key: DB_PASSWORD
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aniverse-app-secrets
+                  key: DB_ROOT_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command: ["healthcheck.sh", "--connect", "--innodb_initialized"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      {{- if not .Values.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "aniverse.labels" . | nindent 10 }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.persistence.accessModes | nindent 10 }}
+        {{- if .Values.persistence.storageClassName }}
+        storageClassName: {{ .Values.persistence.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}
+  {{- end }}

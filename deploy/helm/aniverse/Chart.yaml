@@ -1,0 +1,8 @@
+apiVersion: v2
+name: aniverse
+description: >-
+  Aniverse Django app (web + MariaDB) — kustomize(deploy/k8s)를 대체하는 Helm 차트.
+  persistence.enabled 토글로 랩 클러스터(emptyDir)와 EKS(PVC)를 같은 차트로 배포한다.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

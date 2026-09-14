@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aniverse-web
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aniverse.labels" . | nindent 4 }}
+    app: aniverse-web
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels:
+      app: aniverse-web
+  template:
+    metadata:
+      labels:
+        app: aniverse-web
+    spec:
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: aniverse-app-secrets
+            - configMapRef:
+                name: aniverse-app-config
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: {{ .Values.web.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.web.probes.readiness.periodSeconds }}
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: {{ .Values.web.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.web.probes.liveness.periodSeconds }}
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
