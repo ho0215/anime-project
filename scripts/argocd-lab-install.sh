@@ -19,9 +19,18 @@ kubectl apply -f "${ROOT}/deploy/argocd/namespace.yaml"
 echo "==> Install Argo CD ${ARGO_VERSION}"
 kubectl apply -n "${ARGO_NS}" -f "${INSTALL_URL}"
 
+echo "==> Wait for Application CRD"
+for i in $(seq 1 60); do
+  if kubectl get crd applications.argoproj.io >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+kubectl get crd applications.argoproj.io >/dev/null
+
 echo "==> Wait for argocd-server"
-kubectl -n "${ARGO_NS}" rollout status deployment/argocd-server --timeout=180s
-kubectl -n "${ARGO_NS}" wait --for=condition=Available deployment --all --timeout=180s 2>/dev/null || true
+kubectl -n "${ARGO_NS}" rollout status deployment/argocd-server --timeout=300s
+kubectl -n "${ARGO_NS}" wait --for=condition=Available deployment/argocd-server --timeout=120s
 
 echo "==> Initial admin password:"
 if kubectl -n "${ARGO_NS}" get secret argocd-initial-admin-secret >/dev/null 2>&1; then
