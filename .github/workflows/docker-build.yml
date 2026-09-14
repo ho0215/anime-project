@@ -1,4 +1,4 @@
-# Build container image (ECR push는 시크릿 준비 후 활성화)
+# Build container image; push to ECR on main (or manual run)
 name: Docker build
 
 on:
@@ -13,10 +13,15 @@ on:
 
 env:
   IMAGE_NAME: aniverse
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: aniverse
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # main push / 수동 실행만 ECR push (PR·feature 브랜치는 빌드만)
+    env:
+      PUSH_ECR: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && 'true' || 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,12 +32,26 @@ jobs:
           SHA_SHORT="${GITHUB_SHA::12}"
           echo "sha_tag=sha-${SHA_SHORT}" >> "$GITHUB_OUTPUT"
           echo "ref_tag=ref-${GITHUB_REF_NAME//\//-}" >> "$GITHUB_OUTPUT"
+          echo "PUSH_ECR=${PUSH_ECR}"
           echo "Image tags: sha-${SHA_SHORT}, ref-${GITHUB_REF_NAME}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build image (no push yet)
+      - name: Configure AWS credentials
+        if: env.PUSH_ECR == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: env.PUSH_ECR == 'true'
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -48,22 +67,19 @@ jobs:
       - name: Smoke — show image
         run: docker images "${{ env.IMAGE_NAME }}"
 
-      # --- ECR push (나중에 시크릿/역할 연결 후 주석 해제) ---
-      # - name: Configure AWS credentials
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     aws-region: ap-northeast-2
-      # - name: Login to ECR
-      #   id: ecr
-      #   uses: aws-actions/amazon-ecr-login@v2
-      # - name: Push to ECR
-      #   env:
-      #     REGISTRY: ${{ steps.ecr.outputs.registry }}
-      #     REPO: aniverse
-      #   run: |
-      #     docker tag aniverse:${{ steps.meta.outputs.sha_tag }} "$REGISTRY/$REPO:${{ steps.meta.outputs.sha_tag }}"
-      #     docker tag aniverse:${{ steps.meta.outputs.sha_tag }} "$REGISTRY/$REPO:latest"
-      #     docker push "$REGISTRY/$REPO:${{ steps.meta.outputs.sha_tag }}"
-      #     docker push "$REGISTRY/$REPO:latest"
+      - name: Tag and push to ECR
+        if: env.PUSH_ECR == 'true'
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          SHA_TAG: ${{ steps.meta.outputs.sha_tag }}
+        run: |
+          set -euo pipefail
+          REMOTE="${REGISTRY}/${ECR_REPOSITORY}"
+          docker tag "${IMAGE_NAME}:${SHA_TAG}" "${REMOTE}:${SHA_TAG}"
+          docker tag "${IMAGE_NAME}:${SHA_TAG}" "${REMOTE}:latest"
+          docker push "${REMOTE}:${SHA_TAG}"
+          docker push "${REMOTE}:latest"
+          echo "Pushed ${REMOTE}:${SHA_TAG}"
+          echo "Pushed ${REMOTE}:latest" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`${REMOTE}:${SHA_TAG}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`${REMOTE}:latest\`" >> "$GITHUB_STEP_SUMMARY"

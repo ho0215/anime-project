@@ -1,7 +1,7 @@
 # ECR 수동 push (현우 · CI/CD 2단계)
 
 로컬(또는 cp1)에서 이미지를 빌드해 **ECR에 한 번 올려** 보는 단계입니다.  
-GitHub Actions 자동 push는 그다음입니다.
+`main` 머지 후에는 GitHub Actions(`Docker build`)가 같은 리포에 자동 push 합니다.
 
 ## 비용
 
@@ -94,8 +94,28 @@ terraform output ecr_repository_url
 
 `GetAuthorizationToken` 은 Resource `*` 가 필요합니다.
 
+## GitHub Actions 자동 push (3단계)
+
+워크플로: `.github/workflows/docker-build.yml`
+
+| 트리거 | 동작 |
+|--------|------|
+| PR / `cursor/**` push | 이미지 **빌드만** |
+| `main` push | 빌드 + ECR push (`sha-*`, `latest`) |
+| Actions → Run workflow | 빌드 + ECR push |
+
+필요한 Secrets (CodeDeploy `deploy.yml` 과 동일):
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+
+IAM에 ECR push 권한(`ecr:PutImage` 등)이 있어야 합니다. 수동 push에 쓴 키와 같으면 됩니다.
+
+확인: GitHub → Actions → **Docker build** → 초록 + Summary에 이미지 URI.
+
 ## 다음에 할 일
 
-1. 이 문서대로 **수동 push 1회 성공** 확인
-2. GitHub Actions `docker-build.yml` 에 ECR push 활성화 (OIDC 또는 기존 `AWS_*` 시크릿)
-3. 서이: EKS 노드/IRSA pull 권한 · 윤주: Helm/Kustomize 이미지 URL을 ECR로 교체
+1. ~~수동 push 1회~~ / ~~Actions ECR push~~
+2. 서이: EKS 노드/IRSA pull 권한
+3. 윤주: Helm/Kustomize 이미지 URL을 ECR로 교체
+4. 현우: Argo CD가 ECR 태그 sync
