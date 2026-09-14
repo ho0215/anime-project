@@ -7,3 +7,8 @@ resources:
   - deployment.yaml
 commonLabels:
   project: aniverse
+labels:
+  - pairs:
+      project: aniverse
+    includeSelectors: false
+    includeTemplates: true
