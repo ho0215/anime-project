@@ -48,7 +48,7 @@ ECR 예: `123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:sha-abc123d
 
 ## 다음에 할 일 (AWS)
 
-1. ECR 리포지토리 생성
+1. **ECR 수동 push** — [ecr-manual-push.md](./ecr-manual-push.md) (`./scripts/ecr-push.sh`)
 2. Actions에 ECR push 활성화
 3. Argo CD가 `deploy/k8s` (또는 Helm) sync
 4. 서이: EKS · Ingress / 윤주: DB StatefulSet 차트와 합치기
