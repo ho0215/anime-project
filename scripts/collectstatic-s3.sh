@@ -30,6 +30,15 @@ export DB_PASSWORD="${DB_PASSWORD:-unused}"
 export DB_HOST="${DB_HOST:-127.0.0.1}"
 export DB_PORT="${DB_PORT:-3306}"
 
+if command -v python3 >/dev/null; then
+  PY=python3
+elif command -v python >/dev/null; then
+  PY=python
+else
+  echo "python3 가 필요합니다 (sudo apt install python3 python3-venv python3-pip)" >&2
+  exit 1
+fi
+
 if [ -d .venv ]; then
   # shellcheck disable=SC1091
   source .venv/bin/activate
@@ -39,6 +48,6 @@ elif [ -d venv ]; then
 fi
 
 echo "==> collectstatic → s3://${BUCKET}/static/ (${REGION})"
-python manage.py collectstatic --noinput
+"${PY}" manage.py collectstatic --noinput
 
 echo "OK — STATIC_URL 예: https://${BUCKET}.s3.${REGION}.amazonaws.com/static/"
