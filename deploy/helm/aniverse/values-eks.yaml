@@ -5,9 +5,10 @@
 #         --set-string secrets.DB_ROOT_PASSWORD=...
 
 image:
-  # TODO: ECR 리포지토리 URI 로 교체 (docker-build.yml ECR push 활성화 후)
-  repository: <ACCOUNT_ID>.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
-  tag: sha-REPLACE_ME
+  # 현우 CI가 push 하는 ECR (계정 679583587966). 태그는 Actions sha-* 권장.
+  repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
+  tag: latest
+  pullPolicy: Always
 
 config:
   DJANGO_DEBUG: "False"

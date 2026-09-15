@@ -1,114 +1,92 @@
-# Argo CD 랩 적용 (현우)
+# Argo CD 랩 적용 (현우) — Helm GitOps
 
-목표: 랩 클러스터에 Argo CD를 올리고, Git의 `deploy/k8s/overlays/lab-ecr` 를  
-자동 sync 한다.
+목표: 랩에 Argo CD를 올리고, **윤주 Helm 차트** (`deploy/helm/aniverse`) 를 sync 한다.
+
+원래 계획: `Actions → ECR → Argo CD → (Helm) 클러스터`
 
 ## 한 줄 흐름
 
 ```text
-GitHub main (lab-ecr)
-    ↑ sync
-Argo CD (클러스터 argocd 네임스페이스)
-    ↓ apply
+GitHub main
+  deploy/helm/aniverse + values-lab-ecr.yaml
+         ↑ sync
+Argo CD (argocd 네임스페이스)
+         ↓ apply
 aniverse 네임스페이스 (web + db)
 ```
 
-이미지는 예전과 같이 **ECR** — 워커에 `ctr pull` 되어 있어야 Ready.
+이미지는 **ECR** — 랩 워커에 `ctr pull` 필요 (`docs/lab-k8s-ecr.md`).
 
 ## 사전 조건
 
-- [ ] `kubectl` 이 랩 클러스터를 가리킴 (`kubectl get nodes`)
-- [ ] `main` 에 `deploy/k8s/overlays/lab-ecr` 있음
-- [ ] wk1/wk2 에 ECR 이미지 있음 (`docs/lab-k8s-ecr.md`)
-- [ ] (레포 private) GitHub PAT 또는 deploy key 준비
+- [ ] `kubectl` → 랩 클러스터
+- [ ] `main`에 `deploy/helm/aniverse` 있음 (윤주)
+- [ ] wk1/wk2에 ECR 이미지
+- [ ] (private 레포) GitHub PAT
 
-## 설치 (cp1)
+## 설치 / 전환 (cp1)
+
+이미 Argo가 있고 Kustomize Application만 쓰던 경우:
 
 ```bash
 cd ~/Desktop/anime-project
 git pull origin main
-# 이 브랜치 작업 중이면:
-# git fetch && git checkout cursor/argocd-lab-8e41
 
+kubectl apply -f deploy/argocd/application-lab-helm.yaml
+kubectl -n argocd get app aniverse-lab -o yaml | grep -A5 'source:'
+```
+
+`path: deploy/helm/aniverse` 이면 OK.
+
+처음 설치:
+
+```bash
 chmod +x scripts/argocd-lab-install.sh
 ./scripts/argocd-lab-install.sh
 ```
 
-스크립트가 하는 일:
-1. `argocd` 네임스페이스
-2. 공식 Argo CD install 매니페스트 적용
-3. Application `aniverse-lab` 등록
-
-## UI
+## UI · 상태
 
 ```bash
 kubectl -n argocd port-forward svc/argocd-server 8080:443
-```
+# https://127.0.0.1:8080  admin / (아래 비밀번호)
 
-브라우저: https://127.0.0.1:8080  
-- ID: `admin`  
-- PW: 설치 스크립트가 출력 (또는 아래)
-
-```bash
 kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath='{.data.password}' | base64 -d; echo
-```
 
-## 상태 확인
-
-```bash
-kubectl -n argocd get application aniverse-lab
-kubectl -n argocd get application aniverse-lab -o yaml | grep -E 'status:|synced|health' -n | head
-kubectl -n aniverse get pods -o wide
-```
-
-목표: Application **Synced / Healthy**, Pod **1/1 Running**.
-
-## private 레포일 때
-
-Argo가 Git clone 실패하면 (`Authentication failed` 등):
-
-1. GitHub → Settings → Developer settings → PAT (repo 읽기)
-2. UI: Settings → Repositories → Connect Repo  
-   - URL: `https://github.com/ho0215/anime-project.git`  
-   - Username: `ho0215` (또는 아무 문자열)  
-   - Password: PAT  
-또는 CLI:
-
-```bash
-# argocd CLI 있을 때 예시
-argocd repo add https://github.com/ho0215/anime-project.git \
-  --username ho0215 --password "$GITHUB_PAT"
-```
-
-public 이면 이 단계 생략.
-
-## 배포를 바꾸는 법 (이후)
-
-1. Actions가 ECR에 `sha-…` push  
-2. `deploy/k8s/overlays/lab-ecr` 의 `newTag` 를 그 태그로 변경 후 `main` 머지  
-3. Argo가 자동 sync (selfHeal) → Pod 교체  
-
-지금은 `latest` + 워커 ctr pull 전제.
-
-## 롤백
-
-Argo UI → Application → History → Rollback  
-또는 Git revert 후 sync.
-
-## 정리 (비용/랩 리셋)
-
-```bash
-kubectl delete -f deploy/argocd/application-lab-ecr.yaml
-kubectl delete namespace argocd
-# aniverse 앱만 지울 때:
-# kubectl delete namespace aniverse
+kubectl -n argocd get app aniverse-lab
+kubectl -n aniverse get pods
 ```
 
 ## 파일
 
 | 경로 | 역할 |
 |------|------|
-| `scripts/argocd-lab-install.sh` | 설치 + Application |
-| `deploy/argocd/application-lab-ecr.yaml` | sync 대상 정의 |
-| `deploy/k8s/overlays/lab-ecr` | 실제 앱 매니페스트 |
+| `deploy/helm/aniverse` | 윤주 Helm 차트 |
+| `deploy/helm/aniverse/values-lab-ecr.yaml` | 랩·ECR values |
+| `deploy/argocd/application-lab-helm.yaml` | **현재** Argo Application |
+| `deploy/argocd/application-eks-helm.yaml` | EKS용 (서이 클러스터 후, 수동 sync) |
+| `deploy/argocd/application-lab-ecr.yaml` | 예전 Kustomize (deprecated) |
+| `deploy/k8s/overlays/lab-ecr` | 참고용 Kustomize (Argo 기본 path 아님) |
+
+## 배포 바꾸기
+
+1. Actions가 ECR에 `sha-…` push  
+2. `values-lab-ecr.yaml` (또는 eks values)의 `image.tag` 변경 후 main 머지  
+3. Argo sync → Pod 교체  
+
+## EKS
+
+서이 클러스터 준비되면:
+
+```bash
+# Argo가 EKS를 보도록 kubeconfig 등록 또는 EKS에 Argo 설치 후
+kubectl apply -f deploy/argocd/application-eks-helm.yaml
+# UI에서 Sync (자동 sync 꺼 둠)
+```
+
+`values-eks.yaml`에 ECR URI는 이미 반영. StorageClass·시크릿은 서이/윤주와 확인.
+
+## private 레포
+
+Argo UI → Settings → Repositories → PAT 연결. 상세는 이전과 동일.

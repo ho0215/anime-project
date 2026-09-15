@@ -1,10 +1,9 @@
-# DEPRECATED — Kustomize lab-ecr Application
-# 원래 계획: 윤주 Helm + 현우 Argo.
-# 대신 사용: deploy/argocd/application-lab-helm.yaml
+# 계획: Actions → ECR → Argo → (윤주 Helm 차트)
+# 랩 클러스터용 Application — path = deploy/helm/aniverse
 #
-# 기존 클러스터에 이 파일이 적용돼 있으면:
+# 적용:
 #   kubectl apply -f deploy/argocd/application-lab-helm.yaml
-# (같은 이름 aniverse-lab 을 Helm source 로 덮어씀)
+# 기존 Kustomize Application(aniverse-lab)과 이름 동일 → Helm으로 전환됨
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -12,12 +11,18 @@ metadata:
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
+  annotations:
+    description: "Aniverse lab via Helm (deploy/helm/aniverse + values-lab-ecr)"
 spec:
   project: default
   source:
     repoURL: https://github.com/ho0215/anime-project.git
     targetRevision: main
-    path: deploy/k8s/overlays/lab-ecr
+    path: deploy/helm/aniverse
+    helm:
+      releaseName: aniverse
+      valueFiles:
+        - values-lab-ecr.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: aniverse

@@ -46,9 +46,21 @@ kubectl -n aniverse delete pod aniverse-db-0     # Pod 재생성 후에도
 kubectl -n aniverse exec -it aniverse-db-0 -- mariadb -uroot -p -e "SHOW DATABASES;"  # 데이터 남아있는지 확인
 ```
 
+## Argo CD (현우 · 계획된 GitOps)
+
+랩/EKS 배포는 **Helm 차트를 Argo가 sync** 한다.
+
+| 환경 | Application | values |
+|------|----------------|--------|
+| 랩 | `deploy/argocd/application-lab-helm.yaml` | `values-lab-ecr.yaml` |
+| EKS | `deploy/argocd/application-eks-helm.yaml` | `values-eks.yaml` |
+
+문서: [`docs/argocd-lab.md`](../../docs/argocd-lab.md)
+
 ## 남은 작업 (TODO)
 
-- [ ] `anime-project-infra`에서 EKS의 실제 StorageClass 이름 확인 → `values-eks.yaml` 교체
-- [ ] `image.repository`를 ECR URI로 교체 (`docker-build.yml`의 ECR push 활성화 후)
-- [ ] `secrets.*` 운영값을 git에 커밋하지 말고 CI 시크릿에서 `--set-string`으로 주입
-- [ ] (선택) 최초 배포 시 `data/aniverse_backup.sql` 자동 복원용 `post-install` Job hook 추가
+- [x] `image.repository` ECR URI (`values-lab-ecr.yaml` / `values-eks.yaml`) — 현우
+- [ ] `anime-project-infra`에서 EKS 실제 StorageClass 이름 확인 → `values-eks.yaml` (서이)
+- [ ] `secrets.*` 운영값은 git에 커밋하지 말고 CI/`--set-string`으로 주입
+- [ ] (선택) `data/aniverse_backup.sql` post-install Job
+- [ ] (선택) Actions가 `image.tag`를 `sha-*`로 자동 갱신
