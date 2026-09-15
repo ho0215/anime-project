@@ -16,20 +16,22 @@
 
 ## 한 번 올리기 (현우 PC / CI)
 
+스크립트는 **로컬 collectstatic → `aws s3 sync`** 입니다.  
+(Django `S3StaticStorage`로 바로 올리면 파일마다 `HeadObject`라 랩에서 매우 느림.)
+
 ```bash
 cd anime-project
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+source .venv/bin/activate   # 없으면: python3 -m venv .venv && pip install -r requirements.txt
 
-export AWS_STORAGE_BUCKET_NAME=aniverse-static-ho0215-dev-2026-679583587966-ap-northeast-2
-# Terraform output static_bucket_name 이 다르면 그 값 사용
+# 실제 버킷 (수동 생성한 이름). Terraform 적용 후면 output 값을 쓸 것.
+export AWS_STORAGE_BUCKET_NAME=aniverse-static-679583587966-ap-northeast-2
 export AWS_S3_REGION_NAME=ap-northeast-2
 
-chmod +x scripts/collectstatic-s3.sh
 ./scripts/collectstatic-s3.sh
+aws s3 ls "s3://${AWS_STORAGE_BUCKET_NAME}/static/" | head
 ```
 
-브라우저에서 아무 static URL이 200인지 확인.
+브라우저에서 sample URL(스크립트 출력)이 200인지 확인.
 
 ## K8s / Helm
 
