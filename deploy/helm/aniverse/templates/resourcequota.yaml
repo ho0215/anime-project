@@ -1,0 +1,44 @@
+{{- if .Values.resourceQuota.enabled }}
+# 학습용: aniverse 네임스페이스 자원 가드레일 (namespace 하나가 노드를 통째로 잡아먹지 않도록).
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: aniverse-quota
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aniverse.labels" . | nindent 4 }}
+spec:
+  hard:
+    pods: {{ .Values.resourceQuota.pods | quote }}
+    requests.cpu: {{ .Values.resourceQuota.requestsCpu | quote }}
+    requests.memory: {{ .Values.resourceQuota.requestsMemory | quote }}
+    # limits는 정상 운영치보다 여유를 둔다: 롤링 업데이트 중 신/구 파드가 잠깐
+    # 같이 떠서 limits가 일시적으로 거의 두 배 필요해진다 (너무 타이트하면 배포가 막힘).
+    limits.cpu: {{ .Values.resourceQuota.limitsCpu | quote }}
+    limits.memory: {{ .Values.resourceQuota.limitsMemory | quote }}
+---
+# resources를 명시하지 않은 컨테이너에 기본 request/limit을 주입하고, 너무 크거나
+# 작은 값은 애초에 막는다 (ResourceQuota는 스케줄만 막을 뿐 값 자체를 강제하진 않음).
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: aniverse-limits
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aniverse.labels" . | nindent 4 }}
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: {{ .Values.resourceQuota.limitRange.defaultCpu | quote }}
+        memory: {{ .Values.resourceQuota.limitRange.defaultMemory | quote }}
+      defaultRequest:
+        cpu: {{ .Values.resourceQuota.limitRange.defaultRequestCpu | quote }}
+        memory: {{ .Values.resourceQuota.limitRange.defaultRequestMemory | quote }}
+      min:
+        cpu: {{ .Values.resourceQuota.limitRange.minCpu | quote }}
+        memory: {{ .Values.resourceQuota.limitRange.minMemory | quote }}
+      max:
+        cpu: {{ .Values.resourceQuota.limitRange.maxCpu | quote }}
+        memory: {{ .Values.resourceQuota.limitRange.maxMemory | quote }}
+{{- end }}

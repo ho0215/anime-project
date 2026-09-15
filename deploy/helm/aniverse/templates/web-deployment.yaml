@@ -7,7 +7,12 @@ metadata:
     {{- include "aniverse.labels" . | nindent 4 }}
     app: aniverse-web
 spec:
+  # autoscaling.enabled=true면 replicas를 일부러 안 둔다 — HPA(hpa.yaml)가 이 필드를
+  # 관리하는데, 여기 고정값을 넣으면 apply할 때마다 HPA가 정한 replicas를 도로
+  # 덮어써서 계속 싸운다 (deploy/k8s/base/deployment.yaml에서 재현 확인됨).
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.web.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       app: aniverse-web

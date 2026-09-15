@@ -63,3 +63,44 @@ persistence:
   size: 5Gi
   accessModes:
     - ReadWriteOnce
+
+# 파드 레벨 오토스케일링(HPA). maxReplicas는 resourceQuota.limitsCpu 하드캡 아래로 유지할 것
+# (web 1cpu * maxReplicas + db 500m 이 limits.cpu를 넘으면 안 됨).
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 50
+
+# aniverse 네임스페이스 자원 가드레일 (ResourceQuota + LimitRange).
+resourceQuota:
+  enabled: true
+  pods: "10"
+  requestsCpu: "1"
+  requestsMemory: 1Gi
+  limitsCpu: "3"
+  limitsMemory: 3Gi
+  limitRange:
+    defaultCpu: 500m
+    defaultMemory: 512Mi
+    defaultRequestCpu: 100m
+    defaultRequestMemory: 128Mi
+    minCpu: 50m
+    minMemory: 64Mi
+    maxCpu: "1"
+    maxMemory: 1Gi
+
+# DB는 web 파드에서만 3306 접근 허용.
+networkPolicy:
+  enabled: true
+
+# 외부 트래픽 진입점. 기본값 = 랩(nginx ingress-controller) 기준.
+# EKS는 values-eks.yaml에서 className: alb 등으로 오버라이드.
+ingress:
+  enabled: true
+  className: nginx
+  host: aniverse.lab.local
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: ""

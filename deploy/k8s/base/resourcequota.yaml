@@ -13,7 +13,7 @@ spec:
     # limits는 정상 운영치(web 1 CPU/1Gi + db 500m/512Mi = 1.5)보다 여유를 둔다:
     # 롤링 업데이트 중엔 신규 파드가 뜨는 동안 구/신 파드가 잠깐 동시에 떠서
     # limits가 일시적으로 두 배 가까이 필요해진다 (너무 타이트하면 배포 자체가 막힘).
-    limits.cpu: "3"
+    limits.cpu: "3"                
     limits.memory: 3Gi
 ---
 # resources를 명시하지 않은 컨테이너에 기본 request/limit을 주입하고,
