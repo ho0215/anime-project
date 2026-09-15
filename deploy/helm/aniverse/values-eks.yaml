@@ -20,7 +20,10 @@ config:
   DB_HOST: aniverse-db
   DB_PORT: "3306"
   AWS_S3_REGION_NAME: ap-northeast-2
+  # Terraform output static_bucket_name — 설정 시 {% static %} → S3
+  AWS_STORAGE_BUCKET_NAME: "aniverse-static-ho0215-dev-2026-679583587966-ap-northeast-2"
   RUN_MIGRATE: "true"
+  # collectstatic 은 CI/노트북 스크립트 권장 (docs/static-s3.md). Pod IRSA 전에는 false.
   RUN_COLLECTSTATIC: "false"
 
 persistence:

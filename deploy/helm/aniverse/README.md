@@ -60,7 +60,9 @@ kubectl -n aniverse exec -it aniverse-db-0 -- mariadb -uroot -p -e "SHOW DATABAS
 ## 남은 작업 (TODO)
 
 - [x] `image.repository` ECR URI (`values-lab-ecr.yaml` / `values-eks.yaml`) — 현우
+- [x] static → S3 (`docs/static-s3.md`) — 현우
 - [ ] `anime-project-infra`에서 EKS 실제 StorageClass 이름 확인 → `values-eks.yaml` (서이)
 - [ ] `secrets.*` 운영값은 git에 커밋하지 말고 CI/`--set-string`으로 주입
 - [ ] (선택) `data/aniverse_backup.sql` post-install Job
 - [ ] (선택) Actions가 `image.tag`를 `sha-*`로 자동 갱신
+- [ ] EKS Pod IRSA 후 collectstatic Job 검토
