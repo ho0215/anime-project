@@ -7,7 +7,9 @@ metadata:
   labels:
     app: aniverse-web
 spec:
-  replicas: 1
+  # replicas는 일부러 안 둔다 — HPA(hpa.yaml)가 이 필드를 관리하는데, 여기 고정값을
+  # 넣어두면 kubectl apply 할 때마다 HPA가 정한 replicas를 도로 덮어써서 계속
+  # 싸운다 (실제로 재현: apply 한 번에 1로 리셋되는 것 확인함).
   selector:
     matchLabels:
       app: aniverse-web

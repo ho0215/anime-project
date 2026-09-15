@@ -7,6 +7,8 @@ resources:
   - deployment.yaml
   - resourcequota.yaml
   - ingress.yaml
+  - hpa.yaml
+  - networkpolicy.yaml
 commonLabels:
   project: aniverse
 labels:
