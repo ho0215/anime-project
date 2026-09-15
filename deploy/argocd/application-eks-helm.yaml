@@ -1,0 +1,38 @@
+# EKS용 Argo Application (서이 클러스터 준비 후 destination 확인)
+# values: deploy/helm/aniverse/values-eks.yaml
+#
+# 사용 전:
+# 1) 서이: EKS UP, ECR pull, (권장) EBS CSI / gp3
+# 2) kubeconfig로 EKS 등록 또는 이 클러스터에 Argo 설치
+# 3) secrets 는 Git 기본값 말고 --helm-set / ExternalSecrets 권장 (랩 후에)
+#
+#   kubectl apply -f deploy/argocd/application-eks-helm.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aniverse-eks
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    description: "Aniverse EKS via Helm — enable when cluster is ready"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ho0215/anime-project.git
+    targetRevision: main
+    path: deploy/helm/aniverse
+    helm:
+      releaseName: aniverse
+      valueFiles:
+        - values-eks.yaml
+  # 랩에 Argo를 둔 채 EKS로 sync 하려면 server 를 EKS API 로 바꾸고
+  # Argo 에 클러스터 등록 필요. EKS에 Argo를 새로 심으면 default 유지.
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: aniverse
+  syncPolicy:
+    # EKS 준비 전 실수 sync 방지 — 수동 Sync
+    syncOptions:
+      - CreateNamespace=true
+  ignoreDifferences: []

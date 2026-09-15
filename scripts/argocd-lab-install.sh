@@ -41,8 +41,8 @@ else
   echo "(secret not ready yet — retry in a few seconds)"
 fi
 
-echo "==> Apply Application aniverse-lab"
-kubectl apply -f "${ROOT}/deploy/argocd/application-lab-ecr.yaml"
+echo "==> Apply Application aniverse-lab (Helm: deploy/helm/aniverse)"
+kubectl apply -f "${ROOT}/deploy/argocd/application-lab-helm.yaml"
 
 echo
 echo "---- next ----"
@@ -54,4 +54,6 @@ echo "3) 상태:"
 echo "   kubectl -n argocd get app aniverse-lab"
 echo "   kubectl -n aniverse get pods"
 echo
+echo "GitOps 경로: deploy/helm/aniverse + values-lab-ecr.yaml (윤주 Helm / 현우 Argo)"
 echo "레포가 private 이면 Argo 에 Git 자격증명 필요 — docs/argocd-lab.md"
+echo "EKS 준비 후: deploy/argocd/application-eks-helm.yaml"

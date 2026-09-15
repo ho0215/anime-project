@@ -1,0 +1,15 @@
+# 랩 + ECR — Argo CD / helm 공통 values
+# persistence 끔(emptyDir). 이미지만 ECR.
+# StorageClass 없는 kubeadm 랩용.
+#
+# Argo: deploy/argocd/application-lab-helm.yaml
+# CLI:  helm upgrade --install aniverse deploy/helm/aniverse -n aniverse -f deploy/helm/aniverse/values-lab-ecr.yaml
+
+image:
+  repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# 랩: emptyDir (values.yaml 기본과 동일 명시)
+persistence:
+  enabled: false
