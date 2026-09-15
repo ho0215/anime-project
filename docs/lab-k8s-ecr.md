@@ -96,6 +96,6 @@ kubectl -n aniverse create secret docker-registry ecr-pull \
 
 ## 다음에
 
-- **Argo CD:** [argocd-lab.md](./argocd-lab.md) — Git의 lab-ecr 을 자동 sync
-- 서이: EKS 노드 ECR pull → import 없이 `imagePullPolicy: Always`
-- 현우: Argo 가 `overlays/lab-ecr` 또는 이후 `overlays/eks` sync
+- **Argo CD (Helm):** [argocd-lab.md](./argocd-lab.md) — `deploy/helm/aniverse` sync
+- 서이: EKS 노드 ECR pull · StorageClass
+- 윤주: Helm values / PVC 검증

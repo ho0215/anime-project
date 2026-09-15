@@ -169,8 +169,10 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
+# Static / media
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
+# 버킷이 있으면 media + static 모두 S3 (nginx 없이 ALB→Daphne / 브라우저→S3).
+# 버킷이 없으면 로컬 디스크 (개발·랩 emptyDir).
 
 STATIC_URL = '/static/'
 LOGIN_REDIRECT_URL = '/'
@@ -206,7 +208,7 @@ CHANNEL_LAYERS = {
 }
 
 # AWS S3 기본 설정
-# EC2에서는 IAM Instance Profile 을 쓰므로 키가 비어 있어도 boto3 기본 체인으로 동작한다.
+# EC2/EKS에서는 IAM Role 을 쓰므로 키가 비어 있어도 boto3 기본 체인으로 동작한다.
 AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default=None)
 AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default=None)
 AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME', default='')
@@ -220,12 +222,14 @@ if AWS_STORAGE_BUCKET_NAME:
     AWS_S3_CUSTOM_DOMAIN = (
         f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
     )
+    # {% static %} / collectstatic → s3://…/static/
+    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         },
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
         },
     }
 else:

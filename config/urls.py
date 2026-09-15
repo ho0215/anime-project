@@ -19,6 +19,7 @@ urlpatterns = [
     path('community/', include('community.urls')),
 ]
 
-if settings.DEBUG:
+# S3 사용 시 STATIC_URL 이 https://… 이라 runserver static() 헬퍼는 쓰지 않는다.
+if settings.DEBUG and not getattr(settings, 'AWS_STORAGE_BUCKET_NAME', ''):
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

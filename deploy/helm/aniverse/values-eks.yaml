@@ -1,0 +1,36 @@
+# EKS 오버라이드 예시 — 실제 값으로 채우기 전에는 그대로 쓰지 말 것.
+# 사용: helm install aniverse . -n aniverse --create-namespace -f values-eks.yaml \
+#         --set-string secrets.DJANGO_SECRET_KEY=... \
+#         --set-string secrets.DB_PASSWORD=... \
+#         --set-string secrets.DB_ROOT_PASSWORD=...
+
+image:
+  # 현우 CI가 push 하는 ECR (계정 679583587966). 태그는 Actions sha-* 권장.
+  repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
+  tag: latest
+  pullPolicy: Always
+
+config:
+  DJANGO_DEBUG: "False"
+  DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my"
+  DJANGO_CSRF_TRUSTED_ORIGINS: "https://aniverse.my,https://www.aniverse.my"
+  USE_HTTPS: "True"
+  DB_NAME: aniverse
+  DB_USER: aniverse
+  DB_HOST: aniverse-db
+  DB_PORT: "3306"
+  AWS_S3_REGION_NAME: ap-northeast-2
+  # Terraform output static_bucket_name — 설정 시 {% static %} → S3
+  AWS_STORAGE_BUCKET_NAME: "aniverse-static-679583587966-ap-northeast-2"
+  RUN_MIGRATE: "true"
+  # collectstatic 은 CI/노트북 스크립트 권장 (docs/static-s3.md). Pod IRSA 전에는 false.
+  RUN_COLLECTSTATIC: "false"
+
+persistence:
+  enabled: true
+  # TODO: anime-project-infra 에서 EBS CSI driver 로 만든 실제 StorageClass 이름 확인 후 교체.
+  # `kubectl get sc` 로 확인. 비워두면 클러스터 기본 SC 사용 (gp2인 경우가 많음).
+  storageClassName: "gp3"
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce

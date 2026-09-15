@@ -12,6 +12,8 @@ data:
   DB_HOST: aniverse-db
   DB_PORT: "3306"
   AWS_S3_REGION_NAME: ap-northeast-2
+  # 비우면 로컬 static. S3 쓰려면 버킷명 넣고 docs/static-s3.md 참고.
+  # AWS_STORAGE_BUCKET_NAME: ""
   RUN_MIGRATE: "true"
   RUN_COLLECTSTATIC: "false"
 ---
