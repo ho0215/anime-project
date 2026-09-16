@@ -46,6 +46,21 @@ AWS_S3_REGION_NAME: ap-northeast-2
 - **쓰기(collectstatic):** CI/노트북에서 하거나, 나중에 IRSA로 Pod/`Job`에서 실행  
 - 랩에서 `RUN_COLLECTSTATIC=true`로 Pod 기동 시 collectstatic 하면 **자격 증명 없으면 실패** → 기본은 CI/스크립트 권장
 
+## Media (DB 복구 후 사진 안 보일 때)
+
+DB 덤프에는 `goods_images/…`, `works_images/…` **경로만** 있고, S3 객체는 별도입니다.  
+버킷을 비우거나 새로 만든 뒤 SQL만 넣으면 페이지 HTML은 S3 URL을 찍지만 **403/미존재**가 납니다.
+
+로컬(또는 CI)에서 레포 `media/` 를 버킷 루트로 올립니다:
+
+```bash
+export STATIC_BUCKET_NAME=aniverse-static-679583587966-ap-northeast-2
+export AWS_REGION=ap-northeast-2
+./scripts/sync_media_to_s3.sh
+```
+
+infra 레포 Actions **Sync media → S3** (`workflow_dispatch` / 해당 워크플로 push) 로도 동일하게 동기화할 수 있습니다.
+
 ## 남은 것
 
 | 항목 | 담당 |
