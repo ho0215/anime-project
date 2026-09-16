@@ -7,7 +7,7 @@
 
 image:
   repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
-  tag: sha-59adba41dae2
+  tag: sha-fcffa01395fc
   pullPolicy: IfNotPresent
 
 # 랩: emptyDir (values.yaml 기본과 동일 명시)
