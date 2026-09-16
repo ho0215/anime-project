@@ -49,6 +49,6 @@ spec:
                 - name: Host
                   value: aniverse.my
             initialDelaySeconds: {{ .Values.web.probes.liveness.initialDelaySeconds }}
-            periodSeconds: {{ .Values.web.probes.periodSeconds | default .Values.web.probes.liveness.periodSeconds }}
+            periodSeconds: {{ .Values.web.probes.liveness.periodSeconds }}
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
