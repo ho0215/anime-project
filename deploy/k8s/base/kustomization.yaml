@@ -6,6 +6,7 @@ resources:
   - db.yaml
   - deployment.yaml
   - resourcequota.yaml
+  - limitrange.yaml
   - ingress.yaml
   - hpa.yaml
   - networkpolicy.yaml
