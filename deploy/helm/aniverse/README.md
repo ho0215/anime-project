@@ -100,8 +100,8 @@ kubectl delete ns aniverse-pvc-test
 
 `values-eks.yaml` 에서 `dbRestore.enabled: true` 이면 Argo sync 시 Job `aniverse-db-restore` 가:
 
-1. DB ready 대기  
-2. `information_schema` 테이블 수 &lt; `minTables`(기본 20) 이면 `files/aniverse_backup.sql` import  
+1. GitHub raw(`dbRestore.sqlUrl`)에서 덤프 download  
+2. DB ready 대기 후 테이블 수 < `minTables` 이면 import  
 3. 이미 데이터가 있으면 skip  
 
-덤프 원본은 레포 `data/aniverse_backup.sql` → 차트 `files/` 에 복사본. 갱신 시 둘 다 맞출 것.
+덤프 원본: 레포 `data/aniverse_backup.sql` (ConfigMap 미사용).

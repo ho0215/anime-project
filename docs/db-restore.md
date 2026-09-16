@@ -7,31 +7,26 @@ EKS MariaDB는 PVC라 **Terraform destroy 시 데이터가 사라집니다.**
 
 Helm `dbRestore.enabled: true` (`values-eks.yaml`):
 
-1. Argo가 sync 하면 Job `aniverse-db-restore` 실행 (sync-wave 5)
-2. 테이블 수 &lt; 20 이면 `deploy/helm/aniverse/files/aniverse_backup.sql` import
-3. 이미 데이터가 있으면 no-op
-
-NetworkPolicy는 `app: aniverse-db-restore` → DB 3306 을 허용합니다.
+1. Argo sync 시 Job `aniverse-db-restore` (sync-wave 5)
+2. initContainer가 `dbRestore.sqlUrl` (GitHub raw) 에서 덤프 다운로드  
+   — ConfigMap에 넣지 않음 (256Ki annotation 한도)
+3. 테이블 수 < `minTables`(기본 20) 이면 import, 아니면 skip
 
 ```bash
 kubectl -n aniverse get job aniverse-db-restore
-kubectl -n aniverse logs job/aniverse-db-restore
-# Skip restore — schema already present.  또는 Restore complete.
+kubectl -n aniverse logs job/aniverse-db-restore -c restore
 ```
 
 ## 덤프 갱신
 
-```bash
-# 예: 로컬/클러스터에서 dump 후
-cp data/aniverse_backup.sql deploy/helm/aniverse/files/aniverse_backup.sql
-git add data/aniverse_backup.sql deploy/helm/aniverse/files/aniverse_backup.sql
-```
+`data/aniverse_backup.sql` 을 main에 머지하면 Job이 다음 sync부터 그 URL을 받습니다.  
+브랜치 덤프로 시험하려면 values의 `sqlUrl` 을 해당 ref raw URL로 바꿉니다.
 
 ## destroy 후 전체 복구 순서
 
-1. Terraform apply (keep-dns destroy 반대)
-2. Argo sync / helm → DB Job이 SQL 복구 + 앱 기동
-3. Actions **Sync media → S3** (또는 apply 후 restore-s3-assets)
+1. Terraform apply  
+2. Argo sync → DB Job SQL 복구 + 앱  
+3. Sync media → S3  
 4. `curl -sI https://aniverse.my/health/`
 
-관련: [static-s3.md](./static-s3.md) (media), infra `docs/eks-start-stop.md`
+관련: [static-s3.md](./static-s3.md), infra `docs/eks-start-stop.md`

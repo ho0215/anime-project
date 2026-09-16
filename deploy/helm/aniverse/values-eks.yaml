@@ -27,10 +27,12 @@ config:
   # collectstatic 은 CI/노트북 스크립트 권장 (docs/static-s3.md). Pod IRSA 전에는 false.
   RUN_COLLECTSTATIC: "false"
 
-# destroy 후 빈 PVC 면 data/aniverse_backup.sql 자동 복구 (Job)
+# destroy 후 빈 PVC 면 SQL 자동 복구 (Job → Git raw dump)
 dbRestore:
   enabled: true
   minTables: 20
+  sqlUrl: https://raw.githubusercontent.com/ho0215/anime-project/main/data/aniverse_backup.sql
+  curlImage: curlimages/curl:8.11.1
 
 persistence:
   enabled: true
