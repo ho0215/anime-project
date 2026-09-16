@@ -22,6 +22,9 @@ spec:
         - podSelector:
             matchLabels:
               app: aniverse-web
+        - podSelector:
+            matchLabels:
+              app: aniverse-db-restore
       ports:
         - protocol: TCP
           port: {{ .Values.db.port }}

@@ -59,7 +59,7 @@ export AWS_REGION=ap-northeast-2
 ./scripts/sync_media_to_s3.sh
 ```
 
-infra 레포 Actions **Sync media → S3** (`workflow_dispatch` / 해당 워크플로 push) 로도 동일하게 동기화할 수 있습니다.
+SQL 자동 복구는 [db-restore.md](./db-restore.md). infra 레포 Actions **Sync media → S3** (`workflow_dispatch` / 해당 워크플로 push) 로도 동일하게 동기화할 수 있습니다.
 
 ## 남은 것
 

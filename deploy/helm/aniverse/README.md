@@ -92,6 +92,16 @@ kubectl delete ns aniverse-pvc-test
 - [x] static → S3 (`docs/static-s3.md`) — 현우
 - [ ] `anime-project-infra`에서 EKS 실제 StorageClass 이름 확인 → `values-eks.yaml` (서이)
 - [ ] `secrets.*` 운영값은 git에 커밋하지 말고 CI/`--set-string`으로 주입
-- [ ] (선택) `data/aniverse_backup.sql` post-install Job
+- [x] (선택) `data/aniverse_backup.sql` post-install Job — `dbRestore.enabled` (values-eks)
 - [ ] (선택) Actions가 `image.tag`를 `sha-*`로 자동 갱신
 - [ ] EKS Pod IRSA 후 collectstatic Job 검토
+
+## DB 자동 복구 (`dbRestore`)
+
+`values-eks.yaml` 에서 `dbRestore.enabled: true` 이면 Argo sync 시 Job `aniverse-db-restore` 가:
+
+1. DB ready 대기  
+2. `information_schema` 테이블 수 &lt; `minTables`(기본 20) 이면 `files/aniverse_backup.sql` import  
+3. 이미 데이터가 있으면 skip  
+
+덤프 원본은 레포 `data/aniverse_backup.sql` → 차트 `files/` 에 복사본. 갱신 시 둘 다 맞출 것.

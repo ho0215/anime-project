@@ -27,6 +27,11 @@ config:
   # collectstatic 은 CI/노트북 스크립트 권장 (docs/static-s3.md). Pod IRSA 전에는 false.
   RUN_COLLECTSTATIC: "false"
 
+# destroy 후 빈 PVC 면 data/aniverse_backup.sql 자동 복구 (Job)
+dbRestore:
+  enabled: true
+  minTables: 20
+
 persistence:
   enabled: true
   # TODO: anime-project-infra 에서 EBS CSI driver 로 만든 실제 StorageClass 이름 확인 후 교체.
