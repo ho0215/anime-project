@@ -54,6 +54,13 @@ secrets:
   DB_PASSWORD: "aniversepass"
   DB_ROOT_PASSWORD: "rootpass"
 
+# destroy → 재apply 후 빈 DB 에 SQL 덤프 자동 적재 (Job).
+# 테이블 수가 minTables 이상이면 skip. 덤프는 ConfigMap이 아니라 sqlUrl 에서 fetch.
+dbRestore:
+  enabled: false
+  minTables: 20
+  sqlUrl: https://raw.githubusercontent.com/ho0215/anime-project/main/data/aniverse_backup.sql
+
 # DB 볼륨 설정.
 # enabled: false (기본, 랩용) → StatefulSet 이 emptyDir 사용 (Pod 삭제 시 데이터 소실).
 # enabled: true  (EKS 등)     → volumeClaimTemplates 로 PVC 생성 (storageClassName 필수 확인).

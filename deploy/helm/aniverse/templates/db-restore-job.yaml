@@ -1,0 +1,95 @@
+{{- if .Values.dbRestore.enabled }}
+# destroy → 재apply 후 빈 PVC 에 SQL 덤프를 한 번 넣는다.
+# - ConfigMap 금지 (256Ki annotation)
+# - Argo Sync hook 금지 (실패 시 Application sync 가 영구 Waiting)
+# - Docker Hub 추가 pull 최소화: DB 와 동일 mariadb 이미지 + apt curl
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: aniverse-db-restore
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aniverse.labels" . | nindent 4 }}
+    app: aniverse-db-restore
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: aniverse-db-restore
+        {{- include "aniverse.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: restore
+          image: {{ .Values.db.image }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: aniverse-app-config
+                  key: DB_HOST
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: aniverse-app-config
+                  key: DB_NAME
+            - name: MYSQL_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: aniverse-app-secrets
+                  key: DB_ROOT_PASSWORD
+            - name: MIN_TABLES
+              value: {{ .Values.dbRestore.minTables | quote }}
+            - name: SQL_URL
+              value: {{ .Values.dbRestore.sqlUrl | quote }}
+          command: ["/bin/bash", "-ec"]
+          args:
+            - |
+              set -euo pipefail
+              echo "Installing curl (one-shot)..."
+              apt-get update -qq
+              DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates >/dev/null
+
+              echo "Waiting for MariaDB at ${DB_HOST}..."
+              for i in $(seq 1 90); do
+                if mysqladmin ping -h"${DB_HOST}" -uroot --silent; then
+                  echo "DB is up."
+                  break
+                fi
+                sleep 2
+                if [ "$i" -eq 90 ]; then
+                  echo "ERROR: DB not ready" >&2
+                  exit 1
+                fi
+              done
+
+              COUNT="$(mysql -N -B -h"${DB_HOST}" -uroot -e \
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}';")"
+              echo "table_count=${COUNT} (min=${MIN_TABLES})"
+              if [ "${COUNT}" -ge "${MIN_TABLES}" ]; then
+                echo "Skip restore — schema already present."
+                exit 0
+              fi
+
+              echo "Fetching ${SQL_URL}"
+              curl -fsSL -o /tmp/aniverse_backup.sql "${SQL_URL}"
+              ls -lh /tmp/aniverse_backup.sql
+
+              echo "Restoring → ${DB_NAME}"
+              mysql -h"${DB_HOST}" -uroot "${DB_NAME}" < /tmp/aniverse_backup.sql
+              AFTER="$(mysql -N -B -h"${DB_HOST}" -uroot -e \
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}';")"
+              echo "Restore complete. table_count=${AFTER}"
+              test "${AFTER}" -ge "${MIN_TABLES}"
+{{- end }}
