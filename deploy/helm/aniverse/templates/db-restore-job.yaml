@@ -57,13 +57,26 @@ spec:
           args:
             - |
               set -euo pipefail
+              # MariaDB 11 이미지: mariadb / mariadb-admin (mysql* 심볼릭 링크가 없을 수 있음)
+              if command -v mariadb-admin >/dev/null; then
+                MYSQLADMIN=(mariadb-admin)
+                MYSQL=(mariadb)
+              elif command -v mysqladmin >/dev/null; then
+                MYSQLADMIN=(mysqladmin)
+                MYSQL=(mysql)
+              else
+                echo "ERROR: neither mariadb-admin nor mysqladmin in PATH" >&2
+                ls -la /usr/bin/maria* /usr/bin/mysql* 2>/dev/null || true
+                exit 1
+              fi
+
               echo "Installing curl (one-shot)..."
               apt-get update -qq
               DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates >/dev/null
 
               echo "Waiting for MariaDB at ${DB_HOST}..."
               for i in $(seq 1 90); do
-                if mysqladmin ping -h"${DB_HOST}" -uroot --silent; then
+                if "${MYSQLADMIN[@]}" ping -h"${DB_HOST}" -uroot --silent; then
                   echo "DB is up."
                   break
                 fi
@@ -74,7 +87,7 @@ spec:
                 fi
               done
 
-              COUNT="$(mysql -N -B -h"${DB_HOST}" -uroot -e \
+              COUNT="$("${MYSQL[@]}" -N -B -h"${DB_HOST}" -uroot -e \
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}';")"
               echo "table_count=${COUNT} (min=${MIN_TABLES})"
               if [ "${COUNT}" -ge "${MIN_TABLES}" ]; then
@@ -87,8 +100,8 @@ spec:
               ls -lh /tmp/aniverse_backup.sql
 
               echo "Restoring → ${DB_NAME}"
-              mysql -h"${DB_HOST}" -uroot "${DB_NAME}" < /tmp/aniverse_backup.sql
-              AFTER="$(mysql -N -B -h"${DB_HOST}" -uroot -e \
+              "${MYSQL[@]}" -h"${DB_HOST}" -uroot "${DB_NAME}" < /tmp/aniverse_backup.sql
+              AFTER="$("${MYSQL[@]}" -N -B -h"${DB_HOST}" -uroot -e \
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}';")"
               echo "Restore complete. table_count=${AFTER}"
               test "${AFTER}" -ge "${MIN_TABLES}"
