@@ -63,8 +63,8 @@ SQL 자동 복구는 [db-restore.md](./db-restore.md). infra 레포 Actions **Sy
 
 ## 남은 것
 
-| 항목 | 담당 |
-|------|------|
-| EKS Pod IRSA (업로드/media put) | 서이 |
-| ALB Ingress | 서이 |
-| Helm values에 버킷명 반영·시크릿 | 윤주 values / 현우 연동 |
+| 항목 | 담당 | 상태 |
+|------|------|------|
+| EKS Pod IRSA (업로드/media put) | 서이/현우 | Helm SA + TF `aniverse-web-s3-irsa` (apply 필요) |
+| ALB Ingress | 서이 | 완료 |
+| Helm values에 버킷명 반영·시크릿 | 윤주 values / 현우 연동 | 버킷 values-eks / secrets는 Argo params |

@@ -90,11 +90,24 @@ kubectl delete ns aniverse-pvc-test
 
 - [x] `image.repository` ECR URI (`values-lab-ecr.yaml` / `values-eks.yaml`) — 현우
 - [x] static → S3 (`docs/static-s3.md`) — 현우
-- [ ] `anime-project-infra`에서 EKS 실제 StorageClass 이름 확인 → `values-eks.yaml` (서이)
-- [ ] `secrets.*` 운영값은 git에 커밋하지 말고 CI/`--set-string`으로 주입
+- [x] `anime-project-infra`에서 EKS StorageClass `gp3` → `values-eks.yaml`
+- [x] `secrets.*` 운영값은 git 비움 + Argo `helm.parameters` / `--set-string` 주입
 - [x] (선택) `data/aniverse_backup.sql` post-install Job — `dbRestore.enabled` (values-eks)
-- [ ] (선택) Actions가 `image.tag`를 `sha-*`로 자동 갱신
-- [ ] EKS Pod IRSA 후 collectstatic Job 검토
+- [x] Actions가 ECR push 후 `image.tag`를 `sha-*`로 자동 갱신 (`[skip ci]`)
+- [x] EKS Pod IRSA (`serviceAccount` + `aniverse-web-s3-irsa`) — media put
+
+## Secrets (EKS)
+
+`values-eks.yaml` 의 `secrets.*` 는 빈 문자열이다. Helm `required` 로 렌더 시 강제한다.
+
+1. 최초 1회 Secret 생성(또는 기존 helm 설치본 유지)
+2. `./scripts/argocd-eks-install.sh` 가 live Secret → Application `helm.parameters` 로 복사
+3. Argo `ignoreDifferences` 가 Secret data 를 git drift 로 덮지 않음
+
+## ServiceAccount / IRSA
+
+EKS values 는 `aniverse-web` SA 에 `eks.amazonaws.com/role-arn` 을 붙인다.  
+역할은 infra Terraform `module.eks` (`aniverse-web-s3-irsa`) — apply 후 Pod 가 S3 media put 가능.
 
 ## DB 자동 복구 (`dbRestore`)
 

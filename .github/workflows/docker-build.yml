@@ -20,7 +20,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # ECR 후 values image.tag  bump push
       id-token: write # OIDC
     # main push / 수동 실행만 ECR push (PR·feature 브랜치는 빌드만)
     env:
@@ -28,6 +28,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # image.tag bump commit push 용
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set image tags
         id: meta
@@ -137,4 +141,34 @@ jobs:
             echo "### ECR push"
             echo "- \`${REMOTE}:${SHA_TAG}\`"
             echo "- \`${REMOTE}:latest\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Argo GitOps: values 의 image.tag 를 sha-* 로 올려 sync 유도. [skip ci] 로 재빌드 루프 방지.
+      - name: Bump Helm image.tag (GitOps)
+        if: env.PUSH_ECR == 'true'
+        env:
+          SHA_TAG: ${{ steps.meta.outputs.sha_tag }}
+        run: |
+          set -euo pipefail
+          FILES=(
+            deploy/helm/aniverse/values-eks.yaml
+            deploy/helm/aniverse/values-lab-ecr.yaml
+          )
+          for f in "${FILES[@]}"; do
+            test -f "$f"
+            sed -i -E "s/^([[:space:]]*tag:)[[:space:]].*/\\1 ${SHA_TAG}/" "$f"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${FILES[@]}"
+          if git diff --staged --quiet; then
+            echo "image.tag already ${SHA_TAG}"
+            exit 0
+          fi
+          git commit -m "chore(helm): bump image.tag to ${SHA_TAG} [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          {
+            echo "### GitOps tag bump"
+            echo "- \`image.tag\` → \`${SHA_TAG}\` (values-eks / values-lab-ecr)"
+            echo "- commit includes \`[skip ci]\`"
           } >> "$GITHUB_STEP_SUMMARY"

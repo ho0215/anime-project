@@ -55,11 +55,13 @@ else
 fi
 
 # Live Secret → Helm parameters (avoid overwriting EKS passwords with values.yaml lab defaults)
+# REQUIRE_LIVE_SECRETS=true(기본): live Secret 없으면 중단 (values-eks 빈 secrets + required)
 APP_PATCHED="${OUT_DIR}/application-eks-helm.patched.yaml"
-python3 - "${APP_MANIFEST}" "${APP_PATCHED}" <<'PY'
+REQUIRE_LIVE_SECRETS="${REQUIRE_LIVE_SECRETS:-true}"
+python3 - "${APP_MANIFEST}" "${APP_PATCHED}" "${REQUIRE_LIVE_SECRETS}" <<'PY'
 import base64, json, subprocess, sys, yaml
 
-src, dst = sys.argv[1], sys.argv[2]
+src, dst, require = sys.argv[1], sys.argv[2], sys.argv[3].lower() in ("1", "true", "yes")
 with open(src, encoding="utf-8") as f:
     doc = yaml.safe_load(f)
 
@@ -77,10 +79,33 @@ try:
     for key in ("DJANGO_SECRET_KEY", "DB_PASSWORD", "DB_ROOT_PASSWORD"):
         if key in data:
             val = base64.b64decode(data[key]).decode("utf-8")
+            if not val:
+                continue
             params.append({"name": f"secrets.{key}", "value": val})
             print(f"  helm param secrets.{key} ← live secret", flush=True)
 except subprocess.CalledProcessError:
-    print("  (no live aniverse-app-secrets — chart default secrets will be used)", flush=True)
+    data = {}
+    print("  (no live aniverse-app-secrets)", flush=True)
+
+needed = {"secrets.DJANGO_SECRET_KEY", "secrets.DB_PASSWORD", "secrets.DB_ROOT_PASSWORD"}
+have = {p["name"] for p in params}
+missing = needed - have
+if missing and require:
+    print(
+        "ERROR: missing live secrets for: "
+        + ", ".join(sorted(missing))
+        + "\n  Create them once, e.g.:\n"
+        "  kubectl -n aniverse create secret generic aniverse-app-secrets \\\n"
+        "    --from-literal=DJANGO_SECRET_KEY=... \\\n"
+        "    --from-literal=DB_PASSWORD=... \\\n"
+        "    --from-literal=DB_ROOT_PASSWORD=...\n"
+        "  Or set REQUIRE_LIVE_SECRETS=false (lab only).",
+        file=sys.stderr,
+        flush=True,
+    )
+    sys.exit(1)
+if missing and not require:
+    print(f"  WARN: missing {sorted(missing)} — chart render may fail on empty values-eks secrets", flush=True)
 
 helm = doc.setdefault("spec", {}).setdefault("source", {}).setdefault("helm", {})
 existing = {p.get("name"): p for p in helm.get("parameters") or [] if isinstance(p, dict)}

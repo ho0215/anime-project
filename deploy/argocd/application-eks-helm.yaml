@@ -5,8 +5,9 @@
 #   # 또는
 #   kubectl apply -f deploy/argocd/application-eks-helm.yaml
 #
-# Secret: 설치 스크립트가 이미 떠 있는 aniverse-app-secrets 를
-# Helm parameter 로 주입한다. Git 의 랩 기본 비밀번호로 덮지 않음.
+# Secret: values-eks 의 secrets.* 는 비움(required). 설치 스크립트가
+# 이미 떠 있는 aniverse-app-secrets 를 Helm parameter 로 주입한다.
+# Git 랩 기본 비밀번호로 덮지 않음. ignoreDifferences 로 live data 보존.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

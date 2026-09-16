@@ -1,14 +1,27 @@
-# EKS 오버라이드 예시 — 실제 값으로 채우기 전에는 그대로 쓰지 말 것.
-# 사용: helm install aniverse . -n aniverse --create-namespace -f values-eks.yaml \
-#         --set-string secrets.DJANGO_SECRET_KEY=... \
-#         --set-string secrets.DB_PASSWORD=... \
-#         --set-string secrets.DB_ROOT_PASSWORD=...
+# EKS 오버라이드 — secrets 는 git 에 두지 않음.
+# 주입: scripts/argocd-eks-install.sh (live Secret → helm.parameters)
+#    또는: helm … -f values-eks.yaml --set-string secrets.DJANGO_SECRET_KEY=... \
+#                                    --set-string secrets.DB_PASSWORD=... \
+#                                    --set-string secrets.DB_ROOT_PASSWORD=...
 
 image:
-  # 현우 CI가 push 하는 ECR (계정 679583587966). 태그는 Actions sha-* 권장.
+  # CI(docker-build)가 ECR push 후 sha-* 로 자동 갱신
   repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
   tag: latest
   pullPolicy: Always
+
+# 빈 문자열 → secret.yaml required 실패. Argo/helm parameter 필수.
+secrets:
+  DJANGO_SECRET_KEY: ""
+  DB_PASSWORD: ""
+  DB_ROOT_PASSWORD: ""
+
+# infra: module.eks app S3 IRSA (role name aniverse-web-s3-irsa)
+serviceAccount:
+  create: true
+  name: aniverse-web
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::679583587966:role/aniverse-web-s3-irsa"
 
 config:
   DJANGO_DEBUG: "False"
@@ -24,7 +37,7 @@ config:
   # Terraform output static_bucket_name — 설정 시 {% static %} → S3
   AWS_STORAGE_BUCKET_NAME: "aniverse-static-679583587966-ap-northeast-2"
   RUN_MIGRATE: "true"
-  # collectstatic 은 CI/노트북 스크립트 권장 (docs/static-s3.md). Pod IRSA 전에는 false.
+  # 대량 collectstatic 은 CI/노트북 권장. media put 은 Pod IRSA.
   RUN_COLLECTSTATIC: "false"
 
 # destroy 후 빈 PVC 면 SQL 자동 복구 (Job → Git raw dump)
@@ -35,8 +48,7 @@ dbRestore:
 
 persistence:
   enabled: true
-  # TODO: anime-project-infra 에서 EBS CSI driver 로 만든 실제 StorageClass 이름 확인 후 교체.
-  # `kubectl get sc` 로 확인. 비워두면 클러스터 기본 SC 사용 (gp2인 경우가 많음).
+  # EBS CSI StorageClass (infra module.eks kubernetes_storage_class.gp3)
   storageClassName: "gp3"
   size: 10Gi
   accessModes:
