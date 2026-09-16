@@ -12,9 +12,11 @@ image:
 
 config:
   DJANGO_DEBUG: "False"
+  # 쉼표는 values 파일에만 넣는다 (--set-string 은 Helm이 쉼표로 키를 쪼갬)
   DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my,*"
-  DJANGO_CSRF_TRUSTED_ORIGINS: "https://aniverse.my,https://www.aniverse.my"
-  USE_HTTPS: "True"
+  DJANGO_CSRF_TRUSTED_ORIGINS: "https://aniverse.my,https://www.aniverse.my,http://aniverse.my,http://www.aniverse.my"
+  # ACM 붙이기 전엔 False (True면 http→https 리다이렉트에 인증서 필요)
+  USE_HTTPS: "False"
   DB_NAME: aniverse
   DB_USER: aniverse
   DB_HOST: aniverse-db

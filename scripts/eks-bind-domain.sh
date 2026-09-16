@@ -126,27 +126,33 @@ fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 echo "==> Helm upgrade (host=${DOMAIN})"
-EXTRA=()
-if [ -n "${CERT_ARN}" ]; then
-  EXTRA+=(
-    --set-string "ingress.annotations.alb\.ingress\.kubernetes\.io/certificate-arn=${CERT_ARN}"
-    --set-string 'ingress.annotations.alb\.ingress\.kubernetes\.io/listen-ports=[{"HTTP":80},{"HTTPS":443}]'
-    --set-string 'ingress.annotations.alb\.ingress\.kubernetes\.io/ssl-redirect=443'
-    --set-string config.USE_HTTPS=True
-  )
-else
-  EXTRA+=(--set-string config.USE_HTTPS=False)
-fi
+# 쉼표가 있는 값은 --set-string 금지 (Helm이 키로 파싱). values overlay 사용.
+OVERLAY="$(mktemp)"
+trap 'rm -f "${OVERLAY}"' EXIT
+{
+  echo "ingress:"
+  echo "  host: ${DOMAIN}"
+  echo "config:"
+  echo "  DJANGO_ALLOWED_HOSTS: \"${DOMAIN},${WWW},*\""
+  echo "  DJANGO_CSRF_TRUSTED_ORIGINS: \"https://${DOMAIN},https://${WWW},http://${DOMAIN},http://${WWW}\""
+  if [ -n "${CERT_ARN}" ]; then
+    echo "  USE_HTTPS: \"True\""
+    echo "ingress:"
+    echo "  host: ${DOMAIN}"
+    echo "  annotations:"
+    echo "    alb.ingress.kubernetes.io/certificate-arn: \"${CERT_ARN}\""
+    echo "    alb.ingress.kubernetes.io/listen-ports: '[{\"HTTP\": 80}, {\"HTTPS\": 443}]'"
+    echo "    alb.ingress.kubernetes.io/ssl-redirect: \"443\""
+  else
+    echo "  USE_HTTPS: \"False\""
+  fi
+} > "${OVERLAY}"
 
-# secrets 는 기존 Secret 유지 (helm이 비우지 않도록 재지정하지 않음 — --reuse-values)
 helm upgrade aniverse "${ROOT}/deploy/helm/aniverse" \
   -n "${NS}" \
   -f "${ROOT}/deploy/helm/aniverse/values-eks.yaml" \
-  --reuse-values \
-  --set-string "ingress.host=${DOMAIN}" \
-  --set-string "config.DJANGO_ALLOWED_HOSTS=${DOMAIN},${WWW},*" \
-  --set-string "config.DJANGO_CSRF_TRUSTED_ORIGINS=https://${DOMAIN},https://${WWW},http://${DOMAIN},http://${WWW}" \
-  "${EXTRA[@]}"
+  -f "${OVERLAY}" \
+  --reuse-values
 
 kubectl -n "${NS}" rollout status deploy/aniverse-web --timeout=180s || true
 
