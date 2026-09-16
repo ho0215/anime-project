@@ -70,10 +70,6 @@ spec:
                 exit 1
               fi
 
-              echo "Installing curl (one-shot)..."
-              apt-get update -qq
-              DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates >/dev/null
-
               echo "Waiting for MariaDB at ${DB_HOST}..."
               for i in $(seq 1 90); do
                 if "${MYSQLADMIN[@]}" ping -h"${DB_HOST}" -uroot --silent; then
@@ -94,6 +90,10 @@ spec:
                 echo "Skip restore — schema already present."
                 exit 0
               fi
+
+              echo "Installing curl (one-shot)..."
+              apt-get update -qq
+              DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates >/dev/null
 
               echo "Fetching ${SQL_URL}"
               curl -fsSL -o /tmp/aniverse_backup.sql "${SQL_URL}"
