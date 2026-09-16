@@ -21,7 +21,7 @@ spec:
       labels:
         app: aniverse-web
     spec:
-      {{- if .Values.serviceAccount.name }}
+      {{- if .Values.serviceAccount.create }}
       serviceAccountName: {{ .Values.serviceAccount.name }}
       {{- end }}
       containers:
@@ -39,12 +39,18 @@ spec:
             httpGet:
               path: /health/
               port: 8000
+              httpHeaders:
+                - name: Host
+                  value: aniverse.my
             initialDelaySeconds: {{ .Values.web.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.web.probes.readiness.periodSeconds }}
           livenessProbe:
             httpGet:
               path: /health/
               port: 8000
+              httpHeaders:
+                - name: Host
+                  value: aniverse.my
             initialDelaySeconds: {{ .Values.web.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.web.probes.liveness.periodSeconds }}
           resources:

@@ -46,15 +46,25 @@ AWS_S3_REGION_NAME: ap-northeast-2
 - **쓰기(collectstatic):** CI/노트북에서 하거나, 나중에 IRSA로 Pod/`Job`에서 실행  
 - 랩에서 `RUN_COLLECTSTATIC=true`로 Pod 기동 시 collectstatic 하면 **자격 증명 없으면 실패** → 기본은 CI/스크립트 권장
 
-## EC2 v1
+## Media (DB 복구 후 사진 안 보일 때)
 
-Instance profile로 S3 쓰던 환경이면 `collectstatic` 후 nginx `/static/` 대신 S3 URL을 쓰게 됨.  
-nginx static location은 사실상 불필요해짐 (전환 확인 후 제거 가능).
+DB 덤프에는 `goods_images/…`, `works_images/…` **경로만** 있고, S3 객체는 별도입니다.  
+버킷을 비우거나 새로 만든 뒤 SQL만 넣으면 페이지 HTML은 S3 URL을 찍지만 **403/미존재**가 납니다.
 
-## 남은 것 (혼자 아님)
+로컬(또는 CI)에서 레포 `media/` 를 버킷 루트로 올립니다:
 
-| 항목 | 담당 |
-|------|------|
-| EKS Pod IRSA (업로드/media put) | 서이 |
-| ALB Ingress | 서이 |
-| Helm values에 버킷명 반영·시크릿 | 윤주 values / 현우 연동 |
+```bash
+export STATIC_BUCKET_NAME=aniverse-static-679583587966-ap-northeast-2
+export AWS_REGION=ap-northeast-2
+./scripts/sync_media_to_s3.sh
+```
+
+SQL 자동 복구는 [db-restore.md](./db-restore.md). infra 레포 Actions **Sync media → S3** (`workflow_dispatch` / 해당 워크플로 push) 로도 동일하게 동기화할 수 있습니다.
+
+## 남은 것
+
+| 항목 | 담당 | 상태 |
+|------|------|------|
+| EKS Pod IRSA (업로드/media put) | 서이/현우 | Helm SA + TF `aniverse-web-s3-irsa` (apply 필요) |
+| ALB Ingress | 서이 | 완료 |
+| Helm values에 버킷명 반영·시크릿 | 윤주 values / 현우 연동 | 버킷 values-eks / secrets는 Argo params |

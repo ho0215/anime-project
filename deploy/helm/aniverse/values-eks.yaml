@@ -1,24 +1,33 @@
-# EKS 오버라이드 예시 — 실제 값으로 채우기 전에는 그대로 쓰지 말 것.
-# 사용: helm install aniverse . -n aniverse --create-namespace -f values-eks.yaml \
-#         --set-string secrets.DJANGO_SECRET_KEY=... \
-#         --set-string secrets.DB_PASSWORD=... \
-#         --set-string secrets.DB_ROOT_PASSWORD=...
+# EKS 오버라이드 — secrets 는 git 에 두지 않음.
+# 주입: scripts/argocd-eks-install.sh (live Secret → helm.parameters)
+#    또는: helm … -f values-eks.yaml --set-string secrets.DJANGO_SECRET_KEY=... \
+#                                    --set-string secrets.DB_PASSWORD=... \
+#                                    --set-string secrets.DB_ROOT_PASSWORD=...
 
 image:
-  # 현우 CI가 push 하는 ECR (계정 679583587966). 태그는 Actions sha-* 권장.
+  # CI(docker-build)가 ECR push 후 sha-* 로 자동 갱신
   repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
-  tag: latest
+  tag: sha-59adba41dae2
   pullPolicy: Always
 
-# anime-project-infra modules/eks의 aws_iam_role.app_s3 (IRSA).
+# 빈 문자열 → secret.yaml required 실패. Argo/helm parameter 필수.
+secrets:
+  DJANGO_SECRET_KEY: ""
+  DB_PASSWORD: ""
+  DB_ROOT_PASSWORD: ""
+
+# infra: module.eks app S3 IRSA (role name aniverse-web-s3-irsa)
 serviceAccount:
+  create: true
+  name: aniverse-web
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::679583587966:role/aniverse-web-s3-irsa"
 
 config:
   DJANGO_DEBUG: "False"
-  DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my"
-  DJANGO_CSRF_TRUSTED_ORIGINS: "https://aniverse.my,https://www.aniverse.my"
+  # 쉼표는 values 파일에만 넣는다 (--set-string 은 Helm이 쉼표로 키를 쪼갬)
+  DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my,*"
+  DJANGO_CSRF_TRUSTED_ORIGINS: "https://aniverse.my,https://www.aniverse.my,http://aniverse.my,http://www.aniverse.my"
   USE_HTTPS: "True"
   DB_NAME: aniverse
   DB_USER: aniverse
@@ -28,30 +37,34 @@ config:
   # Terraform output static_bucket_name — 설정 시 {% static %} → S3
   AWS_STORAGE_BUCKET_NAME: "aniverse-static-679583587966-ap-northeast-2"
   RUN_MIGRATE: "true"
-  # collectstatic 은 CI/노트북 스크립트 권장 (docs/static-s3.md). Pod IRSA 전에는 false.
+  # 대량 collectstatic 은 CI/노트북 권장. media put 은 Pod IRSA.
   RUN_COLLECTSTATIC: "false"
+
+# destroy 후 빈 PVC 면 SQL 자동 복구 (Job → Git raw dump)
+dbRestore:
+  enabled: true
+  minTables: 20
+  sqlUrl: https://raw.githubusercontent.com/ho0215/anime-project/main/data/aniverse_backup.sql
 
 persistence:
   enabled: true
-  # EBS CSI driver가 만든 gp3 StorageClass (anime-project-infra modules/eks) — 확인 완료.
+  # EBS CSI StorageClass (infra module.eks kubernetes_storage_class.gp3)
   storageClassName: "gp3"
   size: 10Gi
   accessModes:
     - ReadWriteOnce
 
-# Ingress → AWS Load Balancer Controller가 ALB를 만듦 (anime-project-infra modules/eks).
-# EC2 스택(구 ALB)은 제거됐고 module.dns가 aniverse.my를 이 Ingress의 ALB로 alias함.
-# ACM 인증서 ISSUED 확인 완료(2026-09) → HTTPS 리스너 활성화.
-# host를 비워두면(catch-all) 도메인 바뀌어도 Ingress 수정 없이 그대로 붙는다 — 유지.
+# Ingress → AWS Load Balancer Controller ALB
+# aniverse.my 로 붙이려면 DNS(Route53/가비아)가 이 Ingress ALB 를 가리켜야 함.
+#   ./scripts/eks-bind-domain.sh
 ingress:
   className: alb
-  host: ""
+  host: aniverse.my
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /health/
+    # Terraform module.dns ACM (가비아 NS 위임 후 ISSUED)
     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:679583587966:certificate/e217dacc-cb47-4631-8e0e-b1f5d4ff9509"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    # ALB가 자체적으로 80→443 리다이렉트 (Django의 SECURE_SSL_REDIRECT에 맡기면
-    # ALB에 443 리스너 없을 때 리다이렉트가 허공에 뜨는 문제가 있었음 — ALB가 직접 처리)
     alb.ingress.kubernetes.io/ssl-redirect: "443"
