@@ -32,7 +32,6 @@ dbRestore:
   enabled: true
   minTables: 20
   sqlUrl: https://raw.githubusercontent.com/ho0215/anime-project/main/data/aniverse_backup.sql
-  curlImage: curlimages/curl:8.11.1
 
 persistence:
   enabled: true

@@ -60,7 +60,6 @@ dbRestore:
   enabled: false
   minTables: 20
   sqlUrl: https://raw.githubusercontent.com/ho0215/anime-project/main/data/aniverse_backup.sql
-  curlImage: curlimages/curl:8.11.1
 
 # DB 볼륨 설정.
 # enabled: false (기본, 랩용) → StatefulSet 이 emptyDir 사용 (Pod 삭제 시 데이터 소실).
