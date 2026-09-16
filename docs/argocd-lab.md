@@ -75,17 +75,31 @@ kubectl -n aniverse get pods
 2. `values-lab-ecr.yaml` (또는 eks values)의 `image.tag` 변경 후 main 머지  
 3. Argo sync → Pod 교체  
 
-## EKS
+## EKS (실전)
 
-서이 클러스터 준비되면:
+EKS에 Argo를 직접 심고 `values-eks.yaml` 을 sync 한다.
 
 ```bash
-# Argo가 EKS를 보도록 kubeconfig 등록 또는 EKS에 Argo 설치 후
-kubectl apply -f deploy/argocd/application-eks-helm.yaml
-# UI에서 Sync (자동 sync 꺼 둠)
+# 로컬 (kubeconfig → aniverse-eks)
+./scripts/argocd-eks-install.sh
+
+# 또는 infra Actions: "Argo CD on EKS" (OIDC)
 ```
 
-`values-eks.yaml`에 ECR URI는 이미 반영. StorageClass·시크릿은 서이/윤주와 확인.
+| 파일 | 역할 |
+|------|------|
+| `scripts/argocd-eks-install.sh` | Argo 설치 + Application + (옵션) sync |
+| `deploy/argocd/application-eks-helm.yaml` | EKS Application (`prune: false`, Secret/HPA ignore) |
+
+이미 `helm install` 된 워크로드가 있으면 설치 스크립트가 **라이브 Secret**을 Helm parameter로 넣어 랩 기본 비밀번호로 덮지 않는다.
+
+```bash
+kubectl -n argocd get app aniverse-eks
+kubectl -n aniverse get pods
+curl -sI https://aniverse.my/health/
+```
+
+`values-eks.yaml`에 ECR URI는 이미 반영. StorageClass·시크릿 주입은 서이/윤주와 확인.
 
 ## private 레포
 
