@@ -12,7 +12,7 @@ image:
 
 config:
   DJANGO_DEBUG: "False"
-  DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my"
+  DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my,*"
   DJANGO_CSRF_TRUSTED_ORIGINS: "https://aniverse.my,https://www.aniverse.my"
   USE_HTTPS: "True"
   DB_NAME: aniverse
