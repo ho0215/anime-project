@@ -15,8 +15,7 @@ config:
   # 쉼표는 values 파일에만 넣는다 (--set-string 은 Helm이 쉼표로 키를 쪼갬)
   DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my,*"
   DJANGO_CSRF_TRUSTED_ORIGINS: "https://aniverse.my,https://www.aniverse.my,http://aniverse.my,http://www.aniverse.my"
-  # ACM 붙이기 전엔 False (True면 http→https 리다이렉트에 인증서 필요)
-  USE_HTTPS: "False"
+  USE_HTTPS: "True"
   DB_NAME: aniverse
   DB_USER: aniverse
   DB_HOST: aniverse-db
@@ -47,7 +46,7 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /health/
-    # eks-bind-domain.sh 가 ISSUED ACM 을 찾으면 certificate-arn / HTTPS 를 채움
-    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:679583587966:certificate/..."
-    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    # alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # Terraform module.dns ACM (가비아 NS 위임 후 ISSUED)
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:679583587966:certificate/e217dacc-cb47-4631-8e0e-b1f5d4ff9509"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
