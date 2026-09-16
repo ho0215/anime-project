@@ -35,7 +35,7 @@ docker build -t aniverse:local .
 - `.github/workflows/docker-build.yml` — PR/`cursor/**` 는 **빌드만**, `main`(또는 수동 실행)은 **ECR push**
 - 인증: OIDC 권장 (`AWS_ROLE_ARN` + `AWS_USE_OIDC=true`) / 없으면 Access Key fallback
 - 자세한 설정: [ecr-manual-push.md](./ecr-manual-push.md)
-- 기존 `deploy.yml` (CodeDeploy)는 v1용으로 유지
+- 배포: ECR 이미지 → Helm (`deploy/helm/aniverse`) / EKS
 
 ## 태그 규칙
 

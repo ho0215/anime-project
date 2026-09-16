@@ -21,7 +21,7 @@ env = environ.Env(
     AWS_S3_REGION_NAME=(str, 'ap-northeast-2'),
     USE_HTTPS=(bool, False),
 )
-# EC2 user_data 가 /etc/aniverse.env 에도 복사해 둠 (CodeDeploy 동기화 대비)
+# EC2 user_data / 로컬 .env 에서도 동일 키를 쓸 수 있음
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 if os.path.exists('/etc/aniverse.env'):
     environ.Env.read_env('/etc/aniverse.env')
