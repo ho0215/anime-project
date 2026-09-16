@@ -10,6 +10,11 @@ image:
   tag: latest
   pullPolicy: Always
 
+# anime-project-infra modules/eks의 aws_iam_role.app_s3 (IRSA).
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::679583587966:role/aniverse-web-s3-irsa"
+
 config:
   DJANGO_DEBUG: "False"
   DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my"
@@ -28,18 +33,16 @@ config:
 
 persistence:
   enabled: true
-  # TODO: anime-project-infra 에서 EBS CSI driver 로 만든 실제 StorageClass 이름 확인 후 교체.
-  # `kubectl get sc` 로 확인. 비워두면 클러스터 기본 SC 사용 (gp2인 경우가 많음).
+  # EBS CSI driver가 만든 gp3 StorageClass (anime-project-infra modules/eks) — 확인 완료.
   storageClassName: "gp3"
   size: 10Gi
   accessModes:
     - ReadWriteOnce
 
 # Ingress → AWS Load Balancer Controller가 ALB를 만듦 (anime-project-infra modules/eks).
-# host는 아직 비워둠: aniverse.my는 현재 EC2 ALB(Route53 alias)가 물고 있어서 그대로
-# 쓰면 충돌. 도메인 전환 전까지는 host 없이 두면 Ingress가 ALB 자체 DNS로 응답함
-# (`kubectl get ingress aniverse-web`로 주소 확인). 전환 시점 되면 서브도메인
-# (예: eks.aniverse.my) 또는 aniverse.my 자체를 여기로 옮기고 ACM cert-arn 추가.
+# EC2 스택(구 ALB)은 제거됐고 module.dns가 aniverse.my를 이 Ingress의 ALB로 alias함.
+# ACM 인증서 ISSUED 확인 완료(2026-09) → HTTPS 리스너 활성화.
+# host를 비워두면(catch-all) 도메인 바뀌어도 Ingress 수정 없이 그대로 붙는다 — 유지.
 ingress:
   className: alb
   host: ""
@@ -47,5 +50,8 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /health/
-    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:679583587966:certificate/..."
-    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:679583587966:certificate/e217dacc-cb47-4631-8e0e-b1f5d4ff9509"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    # ALB가 자체적으로 80→443 리다이렉트 (Django의 SECURE_SSL_REDIRECT에 맡기면
+    # ALB에 443 리스너 없을 때 리다이렉트가 허공에 뜨는 문제가 있었음 — ALB가 직접 처리)
+    alb.ingress.kubernetes.io/ssl-redirect: "443"

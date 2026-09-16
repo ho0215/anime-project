@@ -7,6 +7,14 @@ image:
   tag: local
   pullPolicy: IfNotPresent
 
+# 파드가 쓰는 ServiceAccount. EKS에서 IRSA(파드 단위 IAM)가 필요하면
+# annotations에 eks.amazonaws.com/role-arn을 넣는다 — values-eks.yaml 참고.
+# 랩에서는 그냥 평범한 ServiceAccount라 아무 효과 없음, 켜둬도 무해함.
+serviceAccount:
+  create: true
+  name: aniverse-web
+  annotations: {}
+
 web:
   replicas: 1
   service:
