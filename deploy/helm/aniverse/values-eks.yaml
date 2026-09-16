@@ -12,7 +12,7 @@ image:
 
 config:
   DJANGO_DEBUG: "False"
-  DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my"
+  DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my,*"
   DJANGO_CSRF_TRUSTED_ORIGINS: "https://aniverse.my,https://www.aniverse.my"
   USE_HTTPS: "True"
   DB_NAME: aniverse
@@ -35,17 +35,17 @@ persistence:
   accessModes:
     - ReadWriteOnce
 
-# Ingress → AWS Load Balancer Controller가 ALB를 만듦 (anime-project-infra modules/eks).
-# host는 아직 비워둠: aniverse.my는 현재 EC2 ALB(Route53 alias)가 물고 있어서 그대로
-# 쓰면 충돌. 도메인 전환 전까지는 host 없이 두면 Ingress가 ALB 자체 DNS로 응답함
-# (`kubectl get ingress aniverse-web`로 주소 확인). 전환 시점 되면 서브도메인
-# (예: eks.aniverse.my) 또는 aniverse.my 자체를 여기로 옮기고 ACM cert-arn 추가.
+# Ingress → AWS Load Balancer Controller ALB
+# aniverse.my 로 붙이려면 DNS(Route53/가비아)가 이 Ingress ALB 를 가리켜야 함.
+#   ./scripts/eks-bind-domain.sh
 ingress:
   className: alb
-  host: ""
+  host: aniverse.my
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /health/
+    # eks-bind-domain.sh 가 ISSUED ACM 을 찾으면 certificate-arn / HTTPS 를 채움
     # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:679583587966:certificate/..."
     # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    # alb.ingress.kubernetes.io/ssl-redirect: "443"
