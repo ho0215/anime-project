@@ -9,17 +9,11 @@ __pycache__
 node_modules
 staticfiles
 media
-media (2)
 goods_images
 *.sql
 .cursor
 CLAUDE.md
 .env
 !.env.docker.example
-DEPLOY.md
-appspec.yml
-buildspec.yml
 package-lock.json
 tailwind.config.js
-ystemctl status nginx.service
-requirements.txt.

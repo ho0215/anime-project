@@ -46,12 +46,7 @@ AWS_S3_REGION_NAME: ap-northeast-2
 - **쓰기(collectstatic):** CI/노트북에서 하거나, 나중에 IRSA로 Pod/`Job`에서 실행  
 - 랩에서 `RUN_COLLECTSTATIC=true`로 Pod 기동 시 collectstatic 하면 **자격 증명 없으면 실패** → 기본은 CI/스크립트 권장
 
-## EC2 v1
-
-Instance profile로 S3 쓰던 환경이면 `collectstatic` 후 nginx `/static/` 대신 S3 URL을 쓰게 됨.  
-nginx static location은 사실상 불필요해짐 (전환 확인 후 제거 가능).
-
-## 남은 것 (혼자 아님)
+## 남은 것
 
 | 항목 | 담당 |
 |------|------|
