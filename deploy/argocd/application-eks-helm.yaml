@@ -1,12 +1,12 @@
-# EKS용 Argo Application (서이 클러스터 준비 후 destination 확인)
+# EKS용 Argo Application — 클러스터에 Argo 설치 후 sync
 # values: deploy/helm/aniverse/values-eks.yaml
 #
-# 사용 전:
-# 1) 서이: EKS UP, ECR pull, (권장) EBS CSI / gp3
-# 2) kubeconfig로 EKS 등록 또는 이 클러스터에 Argo 설치
-# 3) secrets 는 Git 기본값 말고 --helm-set / ExternalSecrets 권장 (랩 후에)
-#
+#   ./scripts/argocd-eks-install.sh
+#   # 또는
 #   kubectl apply -f deploy/argocd/application-eks-helm.yaml
+#
+# Secret: 설치 스크립트가 이미 떠 있는 aniverse-app-secrets 를
+# Helm parameter 로 주입한다. Git 의 랩 기본 비밀번호로 덮지 않음.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -15,7 +15,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    description: "Aniverse EKS via Helm — enable when cluster is ready"
+    description: "Aniverse EKS via Helm (Actions → ECR → Argo → EKS)"
 spec:
   project: default
   source:
@@ -26,13 +26,27 @@ spec:
       releaseName: aniverse
       valueFiles:
         - values-eks.yaml
-  # 랩에 Argo를 둔 채 EKS로 sync 하려면 server 를 EKS API 로 바꾸고
-  # Argo 에 클러스터 등록 필요. EKS에 Argo를 새로 심으면 default 유지.
   destination:
     server: https://kubernetes.default.svc
     namespace: aniverse
   syncPolicy:
-    # EKS 준비 전 실수 sync 방지 — 수동 Sync
+    automated:
+      prune: false
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
-  ignoreDifferences: []
+      - RespectIgnoreDifferences=true
+      - ApplyOutOfSyncOnly=true
+  ignoreDifferences:
+    # HPA 가 replicas 를 관리
+    - group: apps
+      kind: Deployment
+      jqPathExpressions:
+        - .spec.replicas
+    # 비밀번호는 클러스터 Secret / Helm parameter 우선
+    - group: ""
+      kind: Secret
+      name: aniverse-app-secrets
+      jsonPointers:
+        - /data
+        - /stringData
