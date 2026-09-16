@@ -8,8 +8,8 @@ EKS MariaDB는 PVC라 **Terraform destroy 시 데이터가 사라집니다.**
 Helm `dbRestore.enabled: true` (`values-eks.yaml`):
 
 1. Argo sync 시 Job `aniverse-db-restore` (sync-wave 5)
-2. initContainer가 `dbRestore.sqlUrl` (GitHub raw) 에서 덤프 다운로드  
-   — ConfigMap에 넣지 않음 (256Ki annotation 한도)
+2. Job이 `dbRestore.sqlUrl` (GitHub raw) 에서 curl로 덤프 다운로드  
+   — ConfigMap/Sync-hook 미사용 (annotation 한도·sync 정합)
 3. 테이블 수 < `minTables`(기본 20) 이면 import, 아니면 skip
 
 ```bash

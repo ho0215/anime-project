@@ -33,8 +33,7 @@ spec:
           args:
             - |
               echo "Fetching ${SQL_URL}"
-              wget -qO /backup/aniverse_backup.sql "${SQL_URL}" \
-                || curl -fsSL -o /backup/aniverse_backup.sql "${SQL_URL}"
+              curl -fsSL -o /backup/aniverse_backup.sql "${SQL_URL}"
               ls -lh /backup/aniverse_backup.sql
           volumeMounts:
             - name: backup
