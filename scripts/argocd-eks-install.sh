@@ -188,13 +188,20 @@ if [ "${SYNC}" = "true" ]; then
 
   # ComparisonError 가 한 번 뜨면 SSA 잔존/스키마 이슈 → sanitize 후 1회 재시도
   REMEDIATED=0
-  echo "==> Wait for Synced/Healthy (up to ~8m; ComparisonError 시 SSA strip 후 재동기화)"
+  echo "==> Wait for Synced (up to ~8m); Healthy 또는 Progressing(ALB) OK — Missing 이면 계속 대기"
   for i in $(seq 1 96); do
     SYNC_ST=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "")
     HEALTH=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.health.status}' 2>/dev/null || echo "")
-    echo "  [$i] sync=${SYNC_ST} health=${HEALTH}"
-    if [ "${SYNC_ST}" = "Synced" ] && [ "${HEALTH}" = "Healthy" ]; then
-      break
+    MISSING_N=$(kubectl -n "${ARGO_NS}" get app aniverse-eks \
+      -o jsonpath='{range .status.resources[*]}{.health.status}{"\n"}{end}' 2>/dev/null \
+      | grep -c '^Missing$' || true)
+    echo "  [$i] sync=${SYNC_ST} health=${HEALTH} missing_resources=${MISSING_N}"
+    # Ingress ALB 전 Progressing 은 정상. Job/리소스 Missing 만 실패로 본다.
+    if [ "${SYNC_ST}" = "Synced" ] && [ "${MISSING_N}" = "0" ]; then
+      if [ "${HEALTH}" = "Healthy" ] || [ "${HEALTH}" = "Progressing" ]; then
+        echo "  OK: Synced with health=${HEALTH} (no Missing resources)"
+        break
+      fi
     fi
 
     COND=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.conditions[*].type}' 2>/dev/null || echo "")
@@ -223,8 +230,11 @@ if [ "${SYNC}" = "true" ]; then
 
   SYNC_ST=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "")
   HEALTH=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.health.status}' 2>/dev/null || echo "")
-  if [ "${SYNC_ST}" != "Synced" ] || [ "${HEALTH}" != "Healthy" ]; then
-    echo "WARN: still sync=${SYNC_ST} health=${HEALTH} — helm fallback / 수동 sync 필요할 수 있음" >&2
+  MISSING_N=$(kubectl -n "${ARGO_NS}" get app aniverse-eks \
+    -o jsonpath='{range .status.resources[*]}{.health.status}{"\n"}{end}' 2>/dev/null \
+    | grep -c '^Missing$' || true)
+  if [ "${SYNC_ST}" != "Synced" ] || [ "${MISSING_N}" != "0" ]; then
+    echo "WARN: still sync=${SYNC_ST} health=${HEALTH} missing=${MISSING_N} — helm fallback / 수동 sync 필요할 수 있음" >&2
     dump_app_diagnostics
     kubectl -n "${ARGO_NS}" get app aniverse-eks -o yaml | sed -n '/^status:/,$p' | head -80 || true
   fi

@@ -2,6 +2,11 @@
 # destroy → 재apply 후 빈 PVC 에 SQL 덤프를 한 번 넣는다.
 # - ConfigMap 금지 (256Ki annotation)
 # - Argo Sync hook 금지 (실패 시 Application sync 가 영구 Waiting)
+# - sync-wave 를 Ingress 보다 뒤로 두지 말 것:
+#   Ingress(ALB) 는 ADDRESS 전까지 health=Progressing 이고, Argo 는
+#   이전 wave 가 Healthy 일 때만 다음 wave 를 적용한다.
+#   wave "5" 이면 Job 이 영구 Missing → Application health=Missing 고착.
+#   DB 준비는 Job 스크립트의 mariadb-admin ping 으로 충분 (wave 0 동시 적용).
 # - Docker Hub 추가 pull 최소화: DB 와 동일 mariadb 이미지 + apt curl
 apiVersion: batch/v1
 kind: Job
@@ -11,8 +16,6 @@ metadata:
   labels:
     {{- include "aniverse.labels" . | nindent 4 }}
     app: aniverse-db-restore
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
 spec:
   backoffLimit: 4
   ttlSecondsAfterFinished: 86400

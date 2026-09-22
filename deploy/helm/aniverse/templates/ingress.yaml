@@ -6,10 +6,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "aniverse.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
   annotations:
+    # ALB ADDRESS 전까지 Ingress health=Progressing.
+    # sync-wave 대기/동기화 완료를 막지 않게 healthcheck 무시 (ALB 대기는 CI Wait Ingress ALB).
+    argocd.argoproj.io/ignore-healthcheck: "true"
+    {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
