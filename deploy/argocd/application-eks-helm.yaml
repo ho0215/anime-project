@@ -37,7 +37,8 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
-      - ApplyOutOfSyncOnly=true
+      # ApplyOutOfSyncOnly 는 첫 sync 때 Missing 리소스 생성을 꼬이게 할 수 있어 제거
+      - ServerSideApply=true
   ignoreDifferences:
     # HPA 가 replicas 를 관리
     - group: apps

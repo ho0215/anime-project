@@ -122,9 +122,11 @@ echo "==> Apply Application aniverse-eks"
 kubectl apply -f "${APP_PATCHED}"
 
 if [ "${SYNC}" = "true" ]; then
-  echo "==> Trigger sync (prune=false via Application syncPolicy)"
-  # Force a sync operation without argocd CLI
-  kubectl -n "${ARGO_NS}" patch application aniverse-eks --type merge -p '{"operation":{"initiatedBy":{"username":"argocd-eks-install"},"sync":{"syncStrategy":{"hook":{}},"syncOptions":["CreateNamespace=true","RespectIgnoreDifferences=true"]}}}' || true
+  echo "==> Trigger sync (full apply — not hook-only)"
+  # hook:{} 만 쓰면 Hook sync strategy 로 돌아가며 리소스가 Missing/OutOfSync 에 오래 남을 수 있음
+  kubectl -n "${ARGO_NS}" patch application aniverse-eks --type merge -p \
+    '{"operation":{"initiatedBy":{"username":"argocd-eks-install"},"sync":{"revision":"HEAD","syncStrategy":{"apply":{"force":false}},"syncOptions":["CreateNamespace=true","RespectIgnoreDifferences=true","ServerSideApply=true"]}}}' \
+    || true
 
   echo "==> Wait for Synced/Healthy (up to ~5m)"
   for i in $(seq 1 60); do
@@ -134,8 +136,23 @@ if [ "${SYNC}" = "true" ]; then
     if [ "${SYNC_ST}" = "Synced" ] && [ "${HEALTH}" = "Healthy" ]; then
       break
     fi
+    # 12회마다(약 1분) 원인 덤프
+    if [ $((i % 12)) -eq 0 ]; then
+      echo "  --- diagnostics ---"
+      kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.conditions}' 2>/dev/null; echo
+      kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.operationState.phase} {.status.operationState.message}' 2>/dev/null; echo
+      kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{range .status.resources[*]}{.kind}/{.name} sync={.status} health={.health.status}{"\n"}{end}' 2>/dev/null | head -40 || true
+      kubectl -n aniverse get pods,ingress 2>/dev/null || true
+    fi
     sleep 5
   done
+
+  SYNC_ST=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "")
+  HEALTH=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.health.status}' 2>/dev/null || echo "")
+  if [ "${SYNC_ST}" != "Synced" ] || [ "${HEALTH}" != "Healthy" ]; then
+    echo "WARN: still sync=${SYNC_ST} health=${HEALTH} — helm fallback / 수동 sync 필요할 수 있음" >&2
+    kubectl -n "${ARGO_NS}" get app aniverse-eks -o yaml | sed -n '/^status:/,$p' | head -80 || true
+  fi
 fi
 
 echo
