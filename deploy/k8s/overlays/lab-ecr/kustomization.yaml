@@ -6,9 +6,9 @@ resources:
   - namespace.yaml
 images:
   # 태그 변경 예:
-  #   kustomize edit set image aniverse=841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:sha-xxxxxxxxxxxx
+  #   kustomize edit set image aniverse=679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:sha-xxxxxxxxxxxx
   - name: aniverse
-    newName: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
+    newName: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
     newTag: latest
 patches:
   - path: web-image-pull-policy.yaml
