@@ -15,7 +15,9 @@ WWW="www.${DOMAIN}"
 REGION="${AWS_REGION:-ap-northeast-2}"
 NS="${NAMESPACE:-aniverse}"
 INGRESS_NAME="${INGRESS_NAME:-aniverse-web}"
-DEFAULT_CERT_ARN="${ACM_CERT_ARN:-arn:aws:acm:ap-northeast-2:679583587966:certificate/e217dacc-cb47-4631-8e0e-b1f5d4ff9509}"
+# TODO(계정 이관): 옛 계정(679583587966) 인증서는 새 계정에서 못 씀 — 폴백 없이
+# ACM_CERT_ARN을 반드시 넘기게 강제. 새 인증서 ISSUED 확인 후 여기 기본값으로 다시 박아도 됨.
+DEFAULT_CERT_ARN="${ACM_CERT_ARN:?ACM_CERT_ARN env var required (새 계정 ACM 인증서 ARN)}"
 WAIT_SEC="${ACM_WAIT_SEC:-900}"
 POLL_SEC="${ACM_POLL_SEC:-30}"
 

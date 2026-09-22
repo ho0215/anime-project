@@ -5,7 +5,7 @@
 # 1) 로컬 staticfiles/ 로 collectstatic
 # 2) aws s3 sync 로 업로드
 #
-#   export AWS_STORAGE_BUCKET_NAME=aniverse-static-679583587966-ap-northeast-2
+#   export AWS_STORAGE_BUCKET_NAME=aniverse-static-841535407395-ap-northeast-2
 #   export AWS_S3_REGION_NAME=ap-northeast-2
 #   ./scripts/collectstatic-s3.sh
 set -euo pipefail

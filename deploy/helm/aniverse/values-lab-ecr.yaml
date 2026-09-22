@@ -6,7 +6,7 @@
 # CLI:  helm upgrade --install aniverse deploy/helm/aniverse -n aniverse -f deploy/helm/aniverse/values-lab-ecr.yaml
 
 image:
-  repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
+  repository: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
   tag: sha-59adba41dae2
   pullPolicy: IfNotPresent
 

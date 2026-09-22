@@ -8,8 +8,8 @@ DB는 계속 공개 MariaDB 이미지 + **emptyDir**(StorageClass 없는 랩용)
 ## 이미지 URI
 
 ```text
-679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:latest
-679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:sha-<12자>
+841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:latest
+841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:sha-<12자>
 ```
 
 ## 왜 바로 `image:` 만 바꾸면 안 되나
@@ -31,7 +31,7 @@ cd ~/Desktop/anime-project
 git pull   # lab-ecr 브랜치
 
 PASS=$(aws ecr get-login-password --region ap-northeast-2)
-IMG=679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:latest
+IMG=841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:latest
 
 ssh ho0215@wk1 "sudo ctr -n k8s.io images pull -u AWS:${PASS} ${IMG}"
 ssh ho0215@wk2 "sudo ctr -n k8s.io images pull -u AWS:${PASS} ${IMG}"
@@ -49,7 +49,7 @@ LAB_ECR_PUSH=1 ./scripts/lab-ecr-import.sh latest
 sudo ctr -n k8s.io images ls | grep aniverse
 ```
 
-`679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:latest` 가 보여야 함.
+`841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:latest` 가 보여야 함.
 
 ### cp1 apply
 
@@ -64,7 +64,7 @@ kubectl -n aniverse get pods -o wide -w
 
 ```bash
 kubectl -n aniverse create secret docker-registry ecr-pull \
-  --docker-server=679583587966.dkr.ecr.ap-northeast-2.amazonaws.com \
+  --docker-server=841535407395.dkr.ecr.ap-northeast-2.amazonaws.com \
   --docker-username=AWS \
   --docker-password="$(aws ecr get-login-password --region ap-northeast-2)"
 # Deployment 에 imagePullSecrets: [{name: ecr-pull}] + imagePullPolicy: Always

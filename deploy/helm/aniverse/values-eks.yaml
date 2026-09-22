@@ -6,7 +6,7 @@
 
 image:
   # CI(docker-build)가 ECR push 후 sha-* 로 자동 갱신
-  repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
+  repository: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
   tag: sha-59adba41dae2
   pullPolicy: Always
 
@@ -21,21 +21,24 @@ serviceAccount:
   create: true
   name: aniverse-web
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::679583587966:role/aniverse-web-s3-irsa"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::841535407395:role/aniverse-web-s3-irsa"
 
 config:
   DJANGO_DEBUG: "False"
   # 쉼표는 values 파일에만 넣는다 (--set-string 은 Helm이 쉼표로 키를 쪼갬)
   DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my,*"
   DJANGO_CSRF_TRUSTED_ORIGINS: "https://aniverse.my,https://www.aniverse.my,http://aniverse.my,http://www.aniverse.my"
-  USE_HTTPS: "True"
+  # TODO(계정 이관): ALB에 443 리스너가 잠깐 없음(위 Ingress TODO 참고).
+  # True로 두면 SECURE_SSL_REDIRECT가 https로 튕기는데 443이 없어 접속 자체가 막힘
+  # (전에 한번 겪은 버그와 동일 구조) — 새 인증서 ISSUED 확인하고 리스너 복구한 뒤에 다시 True로.
+  USE_HTTPS: "False"
   DB_NAME: aniverse
   DB_USER: aniverse
   DB_HOST: aniverse-db
   DB_PORT: "3306"
   AWS_S3_REGION_NAME: ap-northeast-2
   # Terraform output static_bucket_name — 설정 시 {% static %} → S3
-  AWS_STORAGE_BUCKET_NAME: "aniverse-static-679583587966-ap-northeast-2"
+  AWS_STORAGE_BUCKET_NAME: "aniverse-static-841535407395-ap-northeast-2"
   RUN_MIGRATE: "true"
   # 대량 collectstatic 은 CI/노트북 권장. media put 은 Pod IRSA.
   RUN_COLLECTSTATIC: "false"
@@ -64,7 +67,9 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /health/
-    # Terraform module.dns ACM (가비아 NS 위임 후 ISSUED)
-    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:679583587966:certificate/e217dacc-cb47-4631-8e0e-b1f5d4ff9509"
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # TODO(계정 이관): 인증서는 계정 소유 리소스라 옛 ARN(679583587966 계정)을 그대로 못 씀.
+    # 새 계정(841535407395)에서 module.dns가 ACM을 재발급하고 ISSUED 확인 후 아래 3줄 복구.
+    # `aws acm describe-certificate --certificate-arn <output> --query 'Certificate.Status'`
+    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:841535407395:certificate/..."
+    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    # alb.ingress.kubernetes.io/ssl-redirect: "443"

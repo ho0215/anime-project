@@ -11,7 +11,7 @@
 set -euo pipefail
 
 REGION="${AWS_REGION:-ap-northeast-2}"
-ACCOUNT="${AWS_ACCOUNT_ID:-679583587966}"
+ACCOUNT="${AWS_ACCOUNT_ID:-841535407395}"
 REPO="${ECR_REPOSITORY:-aniverse}"
 TAG="${1:-latest}"
 REGISTRY="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
