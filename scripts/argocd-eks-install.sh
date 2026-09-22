@@ -9,6 +9,8 @@
 # 이미 helm 으로 올라간 aniverse 가 있으면 Secret 값을 읽어
 # Helm parameter 로 넣어 sync 시 랩 기본 비밀번호로 덮이지 않게 한다.
 set -euo pipefail
+# GitHub Actions Cancel → SIGTERM/SIGINT. sleep 루프가 안 죽지 않게 즉시 종료.
+trap 'echo "cancelled (signal)" >&2; exit 130' INT TERM
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ARGO_NS=argocd
@@ -189,7 +191,7 @@ if [ "${SYNC}" = "true" ]; then
   # ComparisonError 가 한 번 뜨면 SSA 잔존/스키마 이슈 → sanitize 후 1회 재시도
   REMEDIATED=0
   echo "==> Wait for Synced (up to ~8m); Healthy 또는 Progressing(ALB) OK — Missing 이면 계속 대기"
-  for i in $(seq 1 96); do
+  for i in $(seq 1 48); do
     SYNC_ST=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "")
     HEALTH=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.health.status}' 2>/dev/null || echo "")
     MISSING_N=$(kubectl -n "${ARGO_NS}" get app aniverse-eks \
