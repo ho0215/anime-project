@@ -23,6 +23,56 @@ need() { command -v "$1" >/dev/null || { echo "$1 필요" >&2; exit 1; }; }
 need kubectl
 need python3
 
+# Desired syncOptions — never include ServerSideApply (terminatingReplicas ComparisonError)
+SYNC_OPTS_JSON='["CreateNamespace=true","RespectIgnoreDifferences=true"]'
+
+sanitize_app_spec() {
+  # kubectl apply 는 syncOptions 배열에서 ServerSideApply 를 안 지울 수 있음 → JSON replace 강제
+  echo "==> Sanitize Application syncOptions (strip ServerSideApply) + ignoreDifferences"
+  kubectl -n "${ARGO_NS}" patch application aniverse-eks --type=json -p="[
+    {\"op\":\"replace\",\"path\":\"/spec/syncPolicy/syncOptions\",\"value\":${SYNC_OPTS_JSON}}
+  ]" || true
+
+  # ignoreDifferences 도 live 에 구버전(terminatingReplicas 없음)이 남을 수 있어 파일 기준으로 재적용
+  local ign_patch
+  ign_patch="$(python3 - "${APP_PATCHED}" <<'PY'
+import json, sys, yaml
+with open(sys.argv[1], encoding="utf-8") as f:
+    doc = yaml.safe_load(f)
+ign = doc.get("spec", {}).get("ignoreDifferences") or []
+print(json.dumps({"spec": {"ignoreDifferences": ign}}))
+PY
+)"
+  kubectl -n "${ARGO_NS}" patch application aniverse-eks --type=merge -p "${ign_patch}" || true
+}
+
+cancel_operation() {
+  kubectl -n "${ARGO_NS}" patch application aniverse-eks --type=json \
+    -p='[{"op":"remove","path":"/operation"}]' 2>/dev/null || true
+}
+
+trigger_apply_sync() {
+  local why="$1"
+  echo "==> Trigger apply sync (${why})"
+  cancel_operation
+  kubectl -n "${ARGO_NS}" annotate application aniverse-eks \
+    argocd.argoproj.io/refresh=hard --overwrite 2>/dev/null || true
+  kubectl -n "${ARGO_NS}" patch application aniverse-eks --type merge -p \
+    "{\"operation\":{\"initiatedBy\":{\"username\":\"argocd-eks-install\"},\"sync\":{\"revision\":\"HEAD\",\"syncStrategy\":{\"apply\":{\"force\":false}},\"syncOptions\":[\"CreateNamespace=true\",\"RespectIgnoreDifferences=true\"]}}}" \
+    || true
+}
+
+dump_app_diagnostics() {
+  kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.conditions}' 2>/dev/null; echo
+  kubectl -n "${ARGO_NS}" get app aniverse-eks \
+    -o jsonpath='{.status.operationState.phase} {.status.operationState.message}' 2>/dev/null; echo
+  echo "syncOptions=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.spec.syncPolicy.syncOptions}' 2>/dev/null || true)"
+  kubectl -n "${ARGO_NS}" get app aniverse-eks \
+    -o jsonpath='{range .status.resources[*]}{.kind}/{.name} sync={.status} health={.health.status}{"\n"}{end}' \
+    2>/dev/null | head -40 || true
+  kubectl -n aniverse get pods,ingress,job 2>/dev/null || true
+}
+
 echo "==> kubectl context: $(kubectl config current-context 2>/dev/null || echo '?')"
 kubectl cluster-info >/dev/null
 
@@ -64,6 +114,17 @@ import base64, json, subprocess, sys, yaml
 src, dst, require = sys.argv[1], sys.argv[2], sys.argv[3].lower() in ("1", "true", "yes")
 with open(src, encoding="utf-8") as f:
     doc = yaml.safe_load(f)
+
+# Never ship ServerSideApply — kubectl apply may otherwise leave it from older applies
+opts = [
+    o for o in (doc.get("spec", {}).get("syncPolicy", {}).get("syncOptions") or [])
+    if o != "ServerSideApply=true" and not str(o).startswith("ServerSideApply=")
+]
+if "CreateNamespace=true" not in opts:
+    opts.append("CreateNamespace=true")
+if "RespectIgnoreDifferences=true" not in opts:
+    opts.append("RespectIgnoreDifferences=true")
+doc.setdefault("spec", {}).setdefault("syncPolicy", {})["syncOptions"] = opts
 
 params = []
 try:
@@ -120,34 +181,42 @@ PY
 
 echo "==> Apply Application aniverse-eks"
 kubectl apply -f "${APP_PATCHED}"
+sanitize_app_spec
 
 if [ "${SYNC}" = "true" ]; then
-  echo "==> Trigger sync (client-side apply — avoid SSA schema ComparisonError)"
-  # ServerSideApply=true + 신규 status 필드(terminatingReplicas) → ComparisonError
-  kubectl -n "${ARGO_NS}" patch application aniverse-eks --type merge -p \
-    '{"operation":{"initiatedBy":{"username":"argocd-eks-install"},"sync":{"revision":"HEAD","syncStrategy":{"apply":{"force":false}},"syncOptions":["CreateNamespace=true","RespectIgnoreDifferences=true"]}}}' \
-    || true
+  trigger_apply_sync "initial — client-side apply, no SSA"
 
-  echo "==> Wait for Synced/Healthy (up to ~5m; ComparisonError 시 조기 종료 → helm fallback)"
-  for i in $(seq 1 60); do
+  # ComparisonError 가 한 번 뜨면 SSA 잔존/스키마 이슈 → sanitize 후 1회 재시도
+  REMEDIATED=0
+  echo "==> Wait for Synced/Healthy (up to ~8m; ComparisonError 시 SSA strip 후 재동기화)"
+  for i in $(seq 1 96); do
     SYNC_ST=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "")
     HEALTH=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.health.status}' 2>/dev/null || echo "")
     echo "  [$i] sync=${SYNC_ST} health=${HEALTH}"
     if [ "${SYNC_ST}" = "Synced" ] && [ "${HEALTH}" = "Healthy" ]; then
       break
     fi
+
     COND=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.conditions[*].type}' 2>/dev/null || echo "")
-    if echo "${COND}" | grep -q ComparisonError; then
-      echo "  --- ComparisonError detected — dump & continue to helm fallback ---"
-      kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.conditions}' 2>/dev/null; echo
+    LIVE_OPTS=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.spec.syncPolicy.syncOptions}' 2>/dev/null || echo "")
+    if echo "${COND}" | grep -q ComparisonError || echo "${LIVE_OPTS}" | grep -q ServerSideApply; then
+      if [ "${REMEDIATED}" -eq 0 ]; then
+        echo "  --- ComparisonError / ServerSideApply residue — remediating once ---"
+        dump_app_diagnostics
+        sanitize_app_spec
+        trigger_apply_sync "after ComparisonError remediation"
+        REMEDIATED=1
+        sleep 5
+        continue
+      fi
+      echo "  --- ComparisonError persists after remediation — dump & continue to helm fallback ---"
+      dump_app_diagnostics
       break
     fi
+
     if [ $((i % 12)) -eq 0 ]; then
       echo "  --- diagnostics ---"
-      kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.conditions}' 2>/dev/null; echo
-      kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.operationState.phase} {.status.operationState.message}' 2>/dev/null; echo
-      kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{range .status.resources[*]}{.kind}/{.name} sync={.status} health={.health.status}{"\n"}{end}' 2>/dev/null | head -40 || true
-      kubectl -n aniverse get pods,ingress 2>/dev/null || true
+      dump_app_diagnostics
     fi
     sleep 5
   done
@@ -156,6 +225,7 @@ if [ "${SYNC}" = "true" ]; then
   HEALTH=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.health.status}' 2>/dev/null || echo "")
   if [ "${SYNC_ST}" != "Synced" ] || [ "${HEALTH}" != "Healthy" ]; then
     echo "WARN: still sync=${SYNC_ST} health=${HEALTH} — helm fallback / 수동 sync 필요할 수 있음" >&2
+    dump_app_diagnostics
     kubectl -n "${ARGO_NS}" get app aniverse-eks -o yaml | sed -n '/^status:/,$p' | head -80 || true
   fi
 fi

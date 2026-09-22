@@ -37,8 +37,11 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
-      # ServerSideApply=true 는 새 K8s status 필드(terminatingReplicas 등)와
-      # Argo 정적 스키마가 어긋나면 ComparisonError 를 유발함 → 사용하지 않음
+      # 금지: ServerSideApply=true
+      # → live Deployment/STS 의 .status.terminatingReplicas 와 Argo 정적 스키마가
+      #   어긋나 ComparisonError → sync=Unknown / health=Missing (Job 미생성) 고착.
+      # kubectl apply 가 이전 값(ServerSideApply)을 남길 수 있으므로
+      # scripts/argocd-eks-install.sh 가 syncOptions 를 JSON replace 로 강제한다.
   ignoreDifferences:
     # HPA 가 replicas 를 관리
     - group: apps
