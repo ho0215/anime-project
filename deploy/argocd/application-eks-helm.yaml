@@ -37,14 +37,20 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
-      # ApplyOutOfSyncOnly 는 첫 sync 때 Missing 리소스 생성을 꼬이게 할 수 있어 제거
-      - ServerSideApply=true
+      # ServerSideApply=true 는 새 K8s status 필드(terminatingReplicas 등)와
+      # Argo 정적 스키마가 어긋나면 ComparisonError 를 유발함 → 사용하지 않음
   ignoreDifferences:
     # HPA 가 replicas 를 관리
     - group: apps
       kind: Deployment
       jqPathExpressions:
         - .spec.replicas
+        # K8s 신규 status 필드 — Argo 정적 스키마에 없으면 ComparisonError
+        - .status.terminatingReplicas
+    - group: apps
+      kind: StatefulSet
+      jqPathExpressions:
+        - .status.terminatingReplicas
     # 비밀번호는 클러스터 Secret / Helm parameter 우선
     - group: ""
       kind: Secret

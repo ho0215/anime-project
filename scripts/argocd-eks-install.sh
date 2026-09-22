@@ -12,7 +12,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ARGO_NS=argocd
-ARGO_VERSION="${ARGO_VERSION:-v2.14.9}"
+ARGO_VERSION="${ARGO_VERSION:-v2.14.15}"
 INSTALL_URL="https://raw.githubusercontent.com/argoproj/argo-cd/${ARGO_VERSION}/manifests/install.yaml"
 APP_MANIFEST="${ROOT}/deploy/argocd/application-eks-helm.yaml"
 SYNC="${SYNC:-true}"
@@ -122,13 +122,13 @@ echo "==> Apply Application aniverse-eks"
 kubectl apply -f "${APP_PATCHED}"
 
 if [ "${SYNC}" = "true" ]; then
-  echo "==> Trigger sync (full apply — not hook-only)"
-  # hook:{} 만 쓰면 Hook sync strategy 로 돌아가며 리소스가 Missing/OutOfSync 에 오래 남을 수 있음
+  echo "==> Trigger sync (client-side apply — avoid SSA schema ComparisonError)"
+  # ServerSideApply=true + 신규 status 필드(terminatingReplicas) → ComparisonError
   kubectl -n "${ARGO_NS}" patch application aniverse-eks --type merge -p \
-    '{"operation":{"initiatedBy":{"username":"argocd-eks-install"},"sync":{"revision":"HEAD","syncStrategy":{"apply":{"force":false}},"syncOptions":["CreateNamespace=true","RespectIgnoreDifferences=true","ServerSideApply=true"]}}}' \
+    '{"operation":{"initiatedBy":{"username":"argocd-eks-install"},"sync":{"revision":"HEAD","syncStrategy":{"apply":{"force":false}},"syncOptions":["CreateNamespace=true","RespectIgnoreDifferences=true"]}}}' \
     || true
 
-  echo "==> Wait for Synced/Healthy (up to ~5m)"
+  echo "==> Wait for Synced/Healthy (up to ~5m; ComparisonError 시 조기 종료 → helm fallback)"
   for i in $(seq 1 60); do
     SYNC_ST=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "")
     HEALTH=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.health.status}' 2>/dev/null || echo "")
@@ -136,7 +136,12 @@ if [ "${SYNC}" = "true" ]; then
     if [ "${SYNC_ST}" = "Synced" ] && [ "${HEALTH}" = "Healthy" ]; then
       break
     fi
-    # 12회마다(약 1분) 원인 덤프
+    COND=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.conditions[*].type}' 2>/dev/null || echo "")
+    if echo "${COND}" | grep -q ComparisonError; then
+      echo "  --- ComparisonError detected — dump & continue to helm fallback ---"
+      kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.conditions}' 2>/dev/null; echo
+      break
+    fi
     if [ $((i % 12)) -eq 0 ]; then
       echo "  --- diagnostics ---"
       kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.conditions}' 2>/dev/null; echo
