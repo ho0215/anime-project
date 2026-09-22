@@ -65,6 +65,8 @@ ingress:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /health/
     # Terraform output certificate_arn (account 841535407395)
+    # 주의: ACM Status 가 ISSUED 일 때만 ALB 가 ADDRESS 를 줌.
+    # PENDING_VALIDATION 이면 ssl-redirect/certificate-arn 때문에 ALB 미생성 → CI "ALB hostname missing".
     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:841535407395:certificate/da27663b-d716-4eaa-98ba-2ea5653bdb71"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
