@@ -187,21 +187,36 @@ if [ "${SYNC}" = "true" ]; then
   trigger_apply_sync "initial — client-side apply, no SSA"
 
   # ComparisonError 가 한 번 뜨면 SSA 잔존/스키마 이슈 → sanitize 후 1회 재시도
+  # Missing 고착 시 예전엔 ~8분 대기 → 짧게 끊고 helm fallback
   REMEDIATED=0
-  echo "==> Wait for Synced (up to ~8m); Healthy 또는 Progressing(ALB) OK — Missing 이면 계속 대기"
-  for i in $(seq 1 96); do
+  MISSING_STREAK=0
+  MAX_WAIT="${ARGO_SYNC_MAX_WAIT:-12}"   # 12 * 5s ≈ 1분
+  EARLY_MISSING="${ARGO_SYNC_EARLY_MISSING:-3}"  # Missing 연속 N회면 즉시 중단
+  echo "==> Wait for Synced (max ~$((MAX_WAIT * 5))s); Missing ${EARLY_MISSING}회 연속이면 즉시 helm fallback"
+  for i in $(seq 1 "${MAX_WAIT}"); do
     SYNC_ST=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "")
     HEALTH=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.health.status}' 2>/dev/null || echo "")
     MISSING_N=$(kubectl -n "${ARGO_NS}" get app aniverse-eks \
       -o jsonpath='{range .status.resources[*]}{.health.status}{"\n"}{end}' 2>/dev/null \
       | grep -c '^Missing$' || true)
-    echo "  [$i] sync=${SYNC_ST} health=${HEALTH} missing_resources=${MISSING_N}"
+    echo "  [$i/${MAX_WAIT}] sync=${SYNC_ST} health=${HEALTH} missing_resources=${MISSING_N}"
     # Ingress ALB 전 Progressing 은 정상. Job/리소스 Missing 만 실패로 본다.
     if [ "${SYNC_ST}" = "Synced" ] && [ "${MISSING_N}" = "0" ]; then
       if [ "${HEALTH}" = "Healthy" ] || [ "${HEALTH}" = "Progressing" ]; then
         echo "  OK: Synced with health=${HEALTH} (no Missing resources)"
         break
       fi
+    fi
+
+    if [ "${HEALTH}" = "Missing" ] || [ "${MISSING_N}" != "0" ]; then
+      MISSING_STREAK=$((MISSING_STREAK + 1))
+    else
+      MISSING_STREAK=0
+    fi
+    if [ "${MISSING_STREAK}" -ge "${EARLY_MISSING}" ]; then
+      echo "  --- Missing ${MISSING_STREAK}회 연속 — 대기 중단, helm fallback ---"
+      dump_app_diagnostics
+      break
     fi
 
     COND=$(kubectl -n "${ARGO_NS}" get app aniverse-eks -o jsonpath='{.status.conditions[*].type}' 2>/dev/null || echo "")
@@ -213,7 +228,8 @@ if [ "${SYNC}" = "true" ]; then
         sanitize_app_spec
         trigger_apply_sync "after ComparisonError remediation"
         REMEDIATED=1
-        sleep 5
+        MISSING_STREAK=0
+        sleep 3
         continue
       fi
       echo "  --- ComparisonError persists after remediation — dump & continue to helm fallback ---"
@@ -221,7 +237,7 @@ if [ "${SYNC}" = "true" ]; then
       break
     fi
 
-    if [ $((i % 12)) -eq 0 ]; then
+    if [ $((i % 4)) -eq 0 ]; then
       echo "  --- diagnostics ---"
       dump_app_diagnostics
     fi
