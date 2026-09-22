@@ -15,9 +15,8 @@ WWW="www.${DOMAIN}"
 REGION="${AWS_REGION:-ap-northeast-2}"
 NS="${NAMESPACE:-aniverse}"
 INGRESS_NAME="${INGRESS_NAME:-aniverse-web}"
-# TODO(계정 이관): 옛 계정(679583587966) 인증서는 새 계정에서 못 씀 — 폴백 없이
-# ACM_CERT_ARN을 반드시 넘기게 강제. 새 인증서 ISSUED 확인 후 여기 기본값으로 다시 박아도 됨.
-DEFAULT_CERT_ARN="${ACM_CERT_ARN:?ACM_CERT_ARN env var required (새 계정 ACM 인증서 ARN)}"
+# TODO(계정 이관): 새 계정 ACM — ISSUED 확인 후 사용. 오버라이드: ACM_CERT_ARN=...
+DEFAULT_CERT_ARN="${ACM_CERT_ARN:-arn:aws:acm:ap-northeast-2:841535407395:certificate/da27663b-d716-4eaa-98ba-2ea5653bdb71}"
 WAIT_SEC="${ACM_WAIT_SEC:-900}"
 POLL_SEC="${ACM_POLL_SEC:-30}"
 
@@ -26,6 +25,11 @@ need aws
 need kubectl
 need helm
 need python3
+
+if [ -z "${DEFAULT_CERT_ARN}" ]; then
+  echo "ACM_CERT_ARN 이 비어 있습니다 (새 계정 인증서 ARN 필요)" >&2
+  exit 1
+fi
 
 echo "==> Ingress ALB hostname"
 ALB_DNS="$(kubectl -n "${NS}" get ingress "${INGRESS_NAME}" \

@@ -6,9 +6,7 @@
 
 image:
   # CI(docker-build)가 ECR push 후 sha-* 로 자동 갱신
-  # TODO(계정 이관): CI(AWS_ROLE_ARN)가 아직 옛 계정으로 인증 중이라 이미지가 거기 있음.
-  # GitHub Actions Variables에서 AWS_ROLE_ARN을 새 계정(841535407395)으로 옮긴 뒤 여기도 교체.
-  repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
+  repository: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
   tag: sha-fcffa01395fc
   pullPolicy: Always
 
@@ -30,10 +28,7 @@ config:
   # 쉼표는 values 파일에만 넣는다 (--set-string 은 Helm이 쉼표로 키를 쪼갬)
   DJANGO_ALLOWED_HOSTS: "aniverse.my,www.aniverse.my,*"
   DJANGO_CSRF_TRUSTED_ORIGINS: "https://aniverse.my,https://www.aniverse.my,http://aniverse.my,http://www.aniverse.my"
-  # TODO(계정 이관): ALB에 443 리스너가 잠깐 없음(위 Ingress TODO 참고).
-  # True로 두면 SECURE_SSL_REDIRECT가 https로 튕기는데 443이 없어 접속 자체가 막힘
-  # (전에 한번 겪은 버그와 동일 구조) — 새 인증서 ISSUED 확인하고 리스너 복구한 뒤에 다시 True로.
-  USE_HTTPS: "False"
+  USE_HTTPS: "True"
   DB_NAME: aniverse
   DB_USER: aniverse
   DB_HOST: aniverse-db
@@ -61,7 +56,7 @@ persistence:
 
 # Ingress → AWS Load Balancer Controller ALB
 # aniverse.my 로 붙이려면 DNS(Route53/가비아)가 이 Ingress ALB 를 가리켜야 함.
-#   ./scripts/eks-bind-domain.sh
+#   ACM_CERT_ARN=... ./scripts/eks-bind-domain.sh
 ingress:
   className: alb
   host: aniverse.my
@@ -69,9 +64,7 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /health/
-    # TODO(계정 이관): 인증서는 계정 소유 리소스라 옛 ARN(679583587966 계정)을 그대로 못 씀.
-    # 새 계정(841535407395)에서 module.dns가 ACM을 재발급하고 ISSUED 확인 후 아래 3줄 복구.
-    # `aws acm describe-certificate --certificate-arn <output> --query 'Certificate.Status'`
-    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:841535407395:certificate/..."
-    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    # alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # Terraform output certificate_arn (account 841535407395)
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:841535407395:certificate/da27663b-d716-4eaa-98ba-2ea5653bdb71"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
