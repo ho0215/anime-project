@@ -1,0 +1,48 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aniverse-db-backup
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    eks.amazonaws.com/role-arn: {{ .Values.backup.irsaRoleArn }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: aniverse-db-backup
+  namespace: {{ .Release.Namespace }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: aniverse-db-backup
+          restartPolicy: OnFailure
+          containers:
+            - name: db-backup
+              image: amazon/aws-cli:latest
+              env:
+                - name: MYSQL_PWD
+                  valueFrom:
+                    secretKeyRef:
+                      name: aniverse-app-secrets
+                      key: DB_ROOT_PASSWORD
+                - name: S3_BUCKET
+                  value: {{ .Values.backup.s3Bucket | quote }}
+                - name: S3_PREFIX
+                  value: {{ .Values.backup.s3Prefix | quote }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  yum install -y mariadb105 --quiet
+                  DATE=$(date +%Y%m%d-%H%M%S)
+                  echo "백업 시작: ${DATE}"
+                  mariadb-dump -h aniverse-db-0.aniverse-db -uroot aniverse > /tmp/backup-${DATE}.sql
+                  aws s3 cp /tmp/backup-${DATE}.sql s3://${S3_BUCKET}/${S3_PREFIX}/backup-${DATE}.sql
+                  echo "백업 완료: s3://${S3_BUCKET}/${S3_PREFIX}/backup-${DATE}.sql"
+{{- end }}

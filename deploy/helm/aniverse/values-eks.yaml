@@ -68,3 +68,14 @@ ingress:
     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:679583587966:certificate/e217dacc-cb47-4631-8e0e-b1f5d4ff9509"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
+
+
+# ──────────────────────────────────────────
+# 백업 설정
+# ──────────────────────────────────────────
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  irsaRoleArn: "arn:aws:iam::841535407395:role/aniverse-db-backup-irsa"
+  s3Bucket: "aniverse-static-841535407395-ap-northeast-2"
+  s3Prefix: "db-backups"
