@@ -8,7 +8,7 @@
 image:
   # TODO(계정 이관): AWS_ROLE_ARN이 새 계정으로 옮겨지면 여기도 같이 교체.
   repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
-  tag: sha-23f236199878
+  tag: sha-226a00a39f5f
   pullPolicy: IfNotPresent
 
 # 랩: emptyDir (values.yaml 기본과 동일 명시)
