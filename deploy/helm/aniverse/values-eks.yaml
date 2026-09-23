@@ -7,7 +7,7 @@
 image:
   # CI(docker-build)가 ECR push 후 sha-* 로 자동 갱신
   repository: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
-  tag: sha-5b7df8c0de9b
+  tag: sha-93a8ab09da55
   pullPolicy: Always
 
 # 빈 문자열 → secret.yaml required 실패. Argo/helm parameter 필수.
