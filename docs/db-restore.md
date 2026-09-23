@@ -10,7 +10,9 @@ Helm `dbRestore.enabled: true` (`values-eks.yaml`):
 1. Argo sync 시 Job `aniverse-db-restore` (sync-wave 5)
 2. Job이 `dbRestore.sqlUrl` (GitHub raw) 에서 curl로 덤프 다운로드  
    — ConfigMap/Sync-hook 미사용 (annotation 한도·sync 정합)
-3. 테이블 수 < `minTables`(기본 20) 이면 import, 아니면 skip
+3. 테이블 수 < `minTables`(기본 20) **이거나** `anime_anime` 시드 행이 0이면 import  
+   (migrate만 돌아 빈 스키마만 있으면 예전엔 잘못 Skip 했음)  
+   테이블 ≥ min **그리고** 시드 행 > 0 이면 skip
 
 ```bash
 kubectl -n aniverse get job aniverse-db-restore

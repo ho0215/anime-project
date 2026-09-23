@@ -88,10 +88,18 @@ spec:
 
               COUNT="$("${MYSQL[@]}" -N -B -h"${DB_HOST}" -uroot -e \
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}';")"
-              echo "table_count=${COUNT} (min=${MIN_TABLES})"
-              if [ "${COUNT}" -ge "${MIN_TABLES}" ]; then
-                echo "Skip restore — schema already present."
+              # migrate 만 돌면 테이블은 생기지만 시드 행이 0 — table_count 만 보면 잘못 Skip 함
+              SEED_ROWS="$("${MYSQL[@]}" -N -B -h"${DB_HOST}" -uroot -e \
+                "SELECT COUNT(*) FROM \`${DB_NAME}\`.anime_anime;" 2>/dev/null || echo 0)"
+              # 비숫자/빈값 방어
+              case "${SEED_ROWS}" in ''|*[!0-9]*) SEED_ROWS=0 ;; esac
+              echo "table_count=${COUNT} (min=${MIN_TABLES}) seed_rows(anime_anime)=${SEED_ROWS}"
+              if [ "${COUNT}" -ge "${MIN_TABLES}" ] && [ "${SEED_ROWS}" -gt 0 ]; then
+                echo "Skip restore — schema + seed already present."
                 exit 0
+              fi
+              if [ "${COUNT}" -ge "${MIN_TABLES}" ] && [ "${SEED_ROWS}" = "0" ]; then
+                echo "Schema present but seed empty (migrate-only) — force SQL import."
               fi
 
               echo "Installing curl (one-shot)..."
@@ -106,6 +114,10 @@ spec:
               "${MYSQL[@]}" -h"${DB_HOST}" -uroot "${DB_NAME}" < /tmp/aniverse_backup.sql
               AFTER="$("${MYSQL[@]}" -N -B -h"${DB_HOST}" -uroot -e \
                 "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}';")"
-              echo "Restore complete. table_count=${AFTER}"
+              AFTER_SEED="$("${MYSQL[@]}" -N -B -h"${DB_HOST}" -uroot -e \
+                "SELECT COUNT(*) FROM \`${DB_NAME}\`.anime_anime;" 2>/dev/null || echo 0)"
+              case "${AFTER_SEED}" in ''|*[!0-9]*) AFTER_SEED=0 ;; esac
+              echo "Restore complete. table_count=${AFTER} seed_rows=${AFTER_SEED}"
               test "${AFTER}" -ge "${MIN_TABLES}"
+              test "${AFTER_SEED}" -gt 0
 {{- end }}
