@@ -201,9 +201,14 @@ if [ "${SYNC}" = "true" ]; then
       | grep -c '^Missing$' || true)
     echo "  [$i/${MAX_WAIT}] sync=${SYNC_ST} health=${HEALTH} missing_resources=${MISSING_N}"
     # Ingress ALB 전 Progressing 은 정상. Job/리소스 Missing 만 실패로 본다.
-    if [ "${SYNC_ST}" = "Synced" ] && [ "${MISSING_N}" = "0" ]; then
+    # OutOfSync + Healthy + Missing=0 → 이미지 태그 drift 등. 페이지 장애 아님 → OK 로 통과.
+    if [ "${MISSING_N}" = "0" ]; then
       if [ "${HEALTH}" = "Healthy" ] || [ "${HEALTH}" = "Progressing" ]; then
-        echo "  OK: Synced with health=${HEALTH} (no Missing resources)"
+        if [ "${SYNC_ST}" = "Synced" ]; then
+          echo "  OK: Synced with health=${HEALTH} (no Missing resources)"
+        else
+          echo "  OK: health=${HEALTH} missing=0 (sync=${SYNC_ST} — image drift 등, 장애 아님)"
+        fi
         break
       fi
     fi
@@ -249,10 +254,12 @@ if [ "${SYNC}" = "true" ]; then
   MISSING_N=$(kubectl -n "${ARGO_NS}" get app aniverse-eks \
     -o jsonpath='{range .status.resources[*]}{.health.status}{"\n"}{end}' 2>/dev/null \
     | grep -c '^Missing$' || true)
-  if [ "${SYNC_ST}" != "Synced" ] || [ "${MISSING_N}" != "0" ]; then
+  if [ "${MISSING_N}" != "0" ] || { [ "${HEALTH}" != "Healthy" ] && [ "${HEALTH}" != "Progressing" ]; }; then
     echo "WARN: still sync=${SYNC_ST} health=${HEALTH} missing=${MISSING_N} — helm fallback / 수동 sync 필요할 수 있음" >&2
     dump_app_diagnostics
     kubectl -n "${ARGO_NS}" get app aniverse-eks -o yaml | sed -n '/^status:/,$p' | head -80 || true
+  elif [ "${SYNC_ST}" != "Synced" ]; then
+    echo "INFO: health=${HEALTH} missing=0 but sync=${SYNC_ST} (Deployment image drift 가능 — docker-build Argo sync 가 맞춤)" >&2
   fi
 fi
 
