@@ -1,0 +1,74 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aniverse-db-backup
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    eks.amazonaws.com/role-arn: {{ .Values.backup.irsaRoleArn }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aniverse-db-backup
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aniverse-db-backup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: aniverse-db-backup
+subjects:
+  - kind: ServiceAccount
+    name: aniverse-db-backup
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: aniverse-db-backup
+  namespace: {{ .Release.Namespace }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: aniverse-db-backup
+          restartPolicy: OnFailure
+          containers:
+            - name: db-backup
+              image: amazon/aws-cli:latest
+              env:
+                - name: S3_BUCKET
+                  value: {{ .Values.backup.s3Bucket | quote }}
+                - name: S3_PREFIX
+                  value: {{ .Values.backup.s3Prefix | quote }}
+                - name: MYSQL_PWD
+                  valueFrom:
+                    secretKeyRef:
+                      name: aniverse-app-secrets
+                      key: DB_ROOT_PASSWORD
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  yum install -y kubectl --quiet || curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && chmod +x kubectl && mv kubectl /usr/local/bin/
+                  DATE=$(date +%Y%m%d-%H%M%S)
+                  echo "백업 시작: ${DATE}"
+                  kubectl exec -n aniverse aniverse-db-0 -- mariadb-dump -uroot -p${MYSQL_PWD} aniverse > /tmp/backup-${DATE}.sql
+                  echo "백업 파일 크기: $(ls -lh /tmp/backup-${DATE}.sql)"
+                  aws s3 cp /tmp/backup-${DATE}.sql s3://${S3_BUCKET}/${S3_PREFIX}/backup-${DATE}.sql
+                  echo "백업 완료: s3://${S3_BUCKET}/${S3_PREFIX}/backup-${DATE}.sql"
+{{- end }}
