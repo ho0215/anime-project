@@ -172,3 +172,55 @@ jobs:
             echo "- \`image.tag\` → \`${SHA_TAG}\` (values-eks / values-lab-ecr)"
             echo "- commit includes \`[skip ci]\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # image.tag bump 직후 Argo apply sync — Git만 올라가고 Deployment 가 안 따라가 OutOfSync 되는 것 방지
+      - name: Sync Argo CD Application (EKS)
+        if: env.PUSH_ECR == 'true'
+        continue-on-error: true
+        env:
+          SHA_TAG: ${{ steps.meta.outputs.sha_tag }}
+          EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'aniverse-eks' }}
+          ARGO_APP: aniverse-eks
+          ARGO_NS: argocd
+        run: |
+          set -euo pipefail
+          if ! command -v kubectl >/dev/null; then
+            curl -fsSL -o /tmp/kubectl "https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl"
+            sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+          fi
+          if ! aws eks update-kubeconfig --region "${AWS_REGION}" --name "${EKS_CLUSTER_NAME}" 2>/tmp/eks-kube.err; then
+            echo "::warning::EKS kubeconfig 실패 — ECR/OIDC 역할에 클러스터 권한이 없을 수 있음. Argo UI Sync 또는 infra 역할 사용."
+            cat /tmp/eks-kube.err || true
+            exit 0
+          fi
+          if ! kubectl -n "${ARGO_NS}" get app "${ARGO_APP}" >/dev/null 2>&1; then
+            echo "::warning::Application ${ARGO_APP} 없음 — skip Argo sync"
+            exit 0
+          fi
+          # SSA 잔존 제거 (ComparisonError 방지)
+          kubectl -n "${ARGO_NS}" patch application "${ARGO_APP}" --type=json -p='[
+            {"op":"replace","path":"/spec/syncPolicy/syncOptions","value":["CreateNamespace=true","RespectIgnoreDifferences=true"]}
+          ]' 2>/dev/null || true
+          kubectl -n "${ARGO_NS}" patch application "${ARGO_APP}" --type=json \
+            -p='[{"op":"remove","path":"/operation"}]' 2>/dev/null || true
+          kubectl -n "${ARGO_NS}" annotate application "${ARGO_APP}" \
+            argocd.argoproj.io/refresh=hard --overwrite
+          kubectl -n "${ARGO_NS}" patch application "${ARGO_APP}" --type merge -p \
+            "{\"operation\":{\"initiatedBy\":{\"username\":\"docker-build\"},\"sync\":{\"revision\":\"HEAD\",\"syncStrategy\":{\"apply\":{\"force\":false}},\"syncOptions\":[\"CreateNamespace=true\",\"RespectIgnoreDifferences=true\"]}}}" \
+            || true
+          for i in $(seq 1 24); do
+            SYNC_ST=$(kubectl -n "${ARGO_NS}" get app "${ARGO_APP}" -o jsonpath='{.status.sync.status}' 2>/dev/null || true)
+            HEALTH=$(kubectl -n "${ARGO_NS}" get app "${ARGO_APP}" -o jsonpath='{.status.health.status}' 2>/dev/null || true)
+            WEB=$(kubectl -n "${ARGO_NS}" get app "${ARGO_APP}" \
+              -o jsonpath='{range .status.resources[?(@.kind=="Deployment")]}{.name}={.status}{"\n"}{end}' 2>/dev/null || true)
+            echo "  [$i] sync=${SYNC_ST} health=${HEALTH} deploy=${WEB}"
+            if [ "${SYNC_ST}" = "Synced" ]; then
+              echo "Argo Synced after image.tag bump"
+              echo "- Argo sync: **Synced** (\`${SHA_TAG:-bump}\`)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::warning::Argo still ${SYNC_ST:-unknown} after bump — selfHeal 이 이어가거나 수동 Sync"
+          kubectl -n "${ARGO_NS}" get app "${ARGO_APP}" -o wide || true
+          echo "- Argo sync: **${SYNC_ST:-timeout}** (selfHeal/수동 Sync)" >> "$GITHUB_STEP_SUMMARY"
