@@ -1,34 +1,15 @@
-# DB SQL 자동 복구 (destroy → 재apply)
+# DB SQL 자동 복구
 
-EKS MariaDB는 PVC라 **Terraform destroy 시 데이터가 사라집니다.**  
-스키마·시드는 Git의 SQL 덤프로 다시 넣고, 사진 등은 S3 sync로 복구합니다.
+EKS MariaDB PVC · SQL 시드 · S3 media 복구 절차와 트러블슈팅은 **infra 레포에 통일**되어 있습니다.
 
-## 자동 경로 (EKS)
+→ **[anime-project-infra/docs/db-restore.md](https://github.com/ho0215/anime-project-infra/blob/main/docs/db-restore.md)**  
+→ 장애 로그: **[troubleshooting-log.md](https://github.com/ho0215/anime-project-infra/blob/main/docs/troubleshooting-log.md)**
 
-Helm `dbRestore.enabled: true` (`values-eks.yaml`):
+앱 레포에서 관리하는 것:
 
-1. Argo sync 시 Job `aniverse-db-restore` (sync-wave 5)
-2. Job이 `dbRestore.sqlUrl` (GitHub raw) 에서 curl로 덤프 다운로드  
-   — ConfigMap/Sync-hook 미사용 (annotation 한도·sync 정합)
-3. 테이블 수 < `minTables`(기본 20) **이거나** `anime_anime` 시드 행이 0이면 import  
-   (migrate만 돌아 빈 스키마만 있으면 예전엔 잘못 Skip 했음)  
-   테이블 ≥ min **그리고** 시드 행 > 0 이면 skip
+| 항목 | 경로 |
+|------|------|
+| SQL 덤프 | `data/aniverse_backup.sql` (main) |
+| Helm Job / values | `deploy/helm/aniverse/` (`dbRestore.*`) |
 
-```bash
-kubectl -n aniverse get job aniverse-db-restore
-kubectl -n aniverse logs job/aniverse-db-restore -c restore
-```
-
-## 덤프 갱신
-
-`data/aniverse_backup.sql` 을 main에 머지하면 Job이 다음 sync부터 그 URL을 받습니다.  
-브랜치 덤프로 시험하려면 values의 `sqlUrl` 을 해당 ref raw URL로 바꿉니다.
-
-## destroy 후 전체 복구 순서
-
-1. Terraform apply  
-2. Argo sync → DB Job SQL 복구 + 앱  
-3. Sync media → S3  
-4. `curl -sI https://aniverse.my/health/`
-
-관련: [static-s3.md](./static-s3.md), infra `docs/eks-start-stop.md`
+덤프를 바꿨으면 main에 머지한 뒤 infra Actions **Verify DB restore Job** 을 실행하세요.
