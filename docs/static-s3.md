@@ -24,7 +24,7 @@ cd anime-project
 source .venv/bin/activate   # 없으면: python3 -m venv .venv && pip install -r requirements.txt
 
 # 실제 버킷 (수동 생성한 이름). Terraform 적용 후면 output 값을 쓸 것.
-export AWS_STORAGE_BUCKET_NAME=aniverse-static-679583587966-ap-northeast-2
+export AWS_STORAGE_BUCKET_NAME=aniverse-static-841535407395-ap-northeast-2
 export AWS_S3_REGION_NAME=ap-northeast-2
 
 ./scripts/collectstatic-s3.sh
@@ -54,12 +54,12 @@ DB 덤프에는 `goods_images/…`, `works_images/…` **경로만** 있고, S3 
 로컬(또는 CI)에서 레포 `media/` 를 버킷 루트로 올립니다:
 
 ```bash
-export STATIC_BUCKET_NAME=aniverse-static-679583587966-ap-northeast-2
+export STATIC_BUCKET_NAME=aniverse-static-841535407395-ap-northeast-2
 export AWS_REGION=ap-northeast-2
 ./scripts/sync_media_to_s3.sh
 ```
 
-SQL 자동 복구는 [db-restore.md](./db-restore.md). infra 레포 Actions **Sync media → S3** (`workflow_dispatch` / 해당 워크플로 push) 로도 동일하게 동기화할 수 있습니다.
+SQL 자동 복구는 infra [db-restore.md](https://github.com/ho0215/anime-project-infra/blob/main/docs/db-restore.md) (트러블슈팅 로그도 동일 레포). infra 레포 Actions **Sync media → S3** (`workflow_dispatch` / 해당 워크플로 push) 로도 동일하게 동기화할 수 있습니다.
 
 ## 남은 것
 

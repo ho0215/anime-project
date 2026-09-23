@@ -6,8 +6,8 @@
 
 image:
   # CI(docker-build)가 ECR push 후 sha-* 로 자동 갱신
-  repository: 679583587966.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
-  tag: sha-fcffa01395fc
+  repository: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
+  tag: sha-5b7df8c0de9b
   pullPolicy: Always
 
 # 빈 문자열 → secret.yaml required 실패. Argo/helm parameter 필수.
@@ -21,7 +21,7 @@ serviceAccount:
   create: true
   name: aniverse-web
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::679583587966:role/aniverse-web-s3-irsa"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::841535407395:role/aniverse-web-s3-irsa"
 
 config:
   DJANGO_DEBUG: "False"
@@ -35,7 +35,7 @@ config:
   DB_PORT: "3306"
   AWS_S3_REGION_NAME: ap-northeast-2
   # Terraform output static_bucket_name — 설정 시 {% static %} → S3
-  AWS_STORAGE_BUCKET_NAME: "aniverse-static-679583587966-ap-northeast-2"
+  AWS_STORAGE_BUCKET_NAME: "aniverse-static-841535407395-ap-northeast-2"
   RUN_MIGRATE: "true"
   # 대량 collectstatic 은 CI/노트북 권장. media put 은 Pod IRSA.
   RUN_COLLECTSTATIC: "false"
@@ -56,7 +56,7 @@ persistence:
 
 # Ingress → AWS Load Balancer Controller ALB
 # aniverse.my 로 붙이려면 DNS(Route53/가비아)가 이 Ingress ALB 를 가리켜야 함.
-#   ./scripts/eks-bind-domain.sh
+#   ACM_CERT_ARN=... ./scripts/eks-bind-domain.sh
 ingress:
   className: alb
   host: aniverse.my
@@ -64,8 +64,10 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /health/
-    # Terraform module.dns ACM (가비아 NS 위임 후 ISSUED)
-    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:679583587966:certificate/e217dacc-cb47-4631-8e0e-b1f5d4ff9509"
+    # Terraform output certificate_arn (account 841535407395)
+    # 주의: ACM Status 가 ISSUED 일 때만 ALB 가 ADDRESS 를 줌.
+    # PENDING_VALIDATION 이면 ssl-redirect/certificate-arn 때문에 ALB 미생성 → CI "ALB hostname missing".
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-northeast-2:841535407395:certificate/da27663b-d716-4eaa-98ba-2ea5653bdb71"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
 

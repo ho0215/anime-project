@@ -15,7 +15,8 @@ WWW="www.${DOMAIN}"
 REGION="${AWS_REGION:-ap-northeast-2}"
 NS="${NAMESPACE:-aniverse}"
 INGRESS_NAME="${INGRESS_NAME:-aniverse-web}"
-DEFAULT_CERT_ARN="${ACM_CERT_ARN:-arn:aws:acm:ap-northeast-2:679583587966:certificate/e217dacc-cb47-4631-8e0e-b1f5d4ff9509}"
+# TODO(계정 이관): 새 계정 ACM — ISSUED 확인 후 사용. 오버라이드: ACM_CERT_ARN=...
+DEFAULT_CERT_ARN="${ACM_CERT_ARN:-arn:aws:acm:ap-northeast-2:841535407395:certificate/da27663b-d716-4eaa-98ba-2ea5653bdb71}"
 WAIT_SEC="${ACM_WAIT_SEC:-900}"
 POLL_SEC="${ACM_POLL_SEC:-30}"
 
@@ -24,6 +25,11 @@ need aws
 need kubectl
 need helm
 need python3
+
+if [ -z "${DEFAULT_CERT_ARN}" ]; then
+  echo "ACM_CERT_ARN 이 비어 있습니다 (새 계정 인증서 ARN 필요)" >&2
+  exit 1
+fi
 
 echo "==> Ingress ALB hostname"
 ALB_DNS="$(kubectl -n "${NS}" get ingress "${INGRESS_NAME}" \
@@ -231,11 +237,24 @@ ingress:
     alb.ingress.kubernetes.io/ssl-redirect: "443"
 EOF
 
+# values-eks.yaml 의 secrets.* 는 빈 문자열(required). -f 로 넣으면
+# --reuse-values 를 덮어써서 DJANGO_SECRET_KEY required 로 터짐.
+# live Secret → --set-string 으로만 주입하고, 오버레이만 추가 merge.
+DJANGO="$(kubectl -n "${NS}" get secret aniverse-app-secrets -o jsonpath='{.data.DJANGO_SECRET_KEY}' | base64 -d)"
+DBPASS="$(kubectl -n "${NS}" get secret aniverse-app-secrets -o jsonpath='{.data.DB_PASSWORD}' | base64 -d)"
+ROOTPASS="$(kubectl -n "${NS}" get secret aniverse-app-secrets -o jsonpath='{.data.DB_ROOT_PASSWORD}' | base64 -d)"
+if [ -z "${DJANGO}" ] || [ -z "${DBPASS}" ] || [ -z "${ROOTPASS}" ]; then
+  echo "aniverse-app-secrets 에 DJANGO/DB/ROOT 없음 — bind 전 Secret 시드 필요" >&2
+  exit 1
+fi
+
 helm upgrade aniverse "${ROOT}/deploy/helm/aniverse" \
   -n "${NS}" \
-  -f "${ROOT}/deploy/helm/aniverse/values-eks.yaml" \
   -f "${OVERLAY}" \
-  --reuse-values
+  --reuse-values \
+  --set-string "secrets.DJANGO_SECRET_KEY=${DJANGO}" \
+  --set-string "secrets.DB_PASSWORD=${DBPASS}" \
+  --set-string "secrets.DB_ROOT_PASSWORD=${ROOTPASS}"
 
 kubectl -n "${NS}" rollout status deploy/aniverse-web --timeout=180s || true
 
