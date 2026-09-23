@@ -117,4 +117,6 @@ mysqldump -u… -p… aniverse > data/aniverse_backup.sql
 `data/aniverse_backup.sql` 을 **main에 머지** → Verify(또는 Job 재생성)로 클러스터에 반영.  
 브랜치 덤프 시험: values `sqlUrl` 을 해당 ref raw URL로 변경.
 
-관련: [static-s3.md](./static-s3.md), infra [eks-start-stop.md](https://github.com/ho0215/anime-project-infra/blob/main/docs/eks-start-stop.md), infra [troubleshooting-log.md](https://github.com/ho0215/anime-project-infra/blob/main/docs/troubleshooting-log.md)
+관련: [static-s3.md](./static-s3.md), infra [eks-start-stop.md](https://github.com/ho0215/anime-project-infra/blob/main/docs/eks-start-stop.md), infra **전체 장애 로그** [troubleshooting-log.md](https://github.com/ho0215/anime-project-infra/blob/main/docs/troubleshooting-log.md)  
+(계정 이관 · ACM PENDING · Argo Missing/SSA/sync-wave · Cancel · secrets · OutOfSync 등 2026-09-22~23 항목 포함)
+
