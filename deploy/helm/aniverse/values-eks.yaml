@@ -6,7 +6,7 @@
 image:
   # CI(docker-build)가 ECR push 후 sha-* 로 자동 갱신
   repository: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
-  tag: sha-b7037a583541
+  tag: sha-d5da9ba44b8c
   pullPolicy: Always
 
 externalSecrets:
