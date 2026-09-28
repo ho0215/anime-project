@@ -47,12 +47,17 @@ config:
   RUN_COLLECTSTATIC: "false"
 
 # aniverse-app-secrets Secret 으로 그대로 들어간다.
-# ⚠️ 랩/로컬 기본값. 운영/EKS(values-eks) 는 비워 두고
-# Argo helm.parameters / `--set-string secrets.*=...` 로만 주입한다.
+# ⚠️ 랩/로컬 기본값. 운영/EKS(values-eks) 는 externalSecrets.enabled: true 로
+# External Secrets Operator가 AWS Secrets Manager에서 동기화 — 이 값은 안 쓰임.
 secrets:
   DJANGO_SECRET_KEY: "local-k8s-dev-change-me"
   DB_PASSWORD: "aniversepass"
   DB_ROOT_PASSWORD: "rootpass"
+
+# EKS: External Secrets Operator가 secrets 대신 AWS Secrets Manager에서 동기화.
+# (templates/secret.yaml, templates/external-secret.yaml)
+externalSecrets:
+  enabled: false
 
 # web Pod SA (EKS IRSA: values-eks annotations)
 serviceAccount:
