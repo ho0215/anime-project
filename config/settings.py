@@ -242,3 +242,19 @@ else:
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
     }
+
+# OpenTelemetry (Tracing)
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.django import DjangoInstrumentor
+
+OTEL_ENDPOINT = os.environ.get('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://tempo.monitoring.svc.cluster.local:4317')
+SERVICE_NAME = os.environ.get('OTEL_SERVICE_NAME', 'aniverse-web')
+
+provider = TracerProvider()
+exporter = OTLPSpanExporter(endpoint=OTEL_ENDPOINT, insecure=True)
+provider.add_span_processor(BatchSpanProcessor(exporter))
+trace.set_tracer_provider(provider)
+DjangoInstrumentor().instrument()
