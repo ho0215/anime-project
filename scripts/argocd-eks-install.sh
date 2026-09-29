@@ -6,8 +6,10 @@
 #   ./scripts/argocd-eks-install.sh
 #   SYNC=true ./scripts/argocd-eks-install.sh   # Application sync 까지
 #
-# 이미 helm 으로 올라간 aniverse 가 있으면 Secret 값을 읽어
-# Helm parameter 로 넣어 sync 시 랩 기본 비밀번호로 덮이지 않게 한다.
+# 시크릿(DJANGO_SECRET_KEY/DB_PASSWORD/DB_ROOT_PASSWORD)은 External Secrets
+# Operator가 AWS Secrets Manager에서 직접 동기화한다(docs/external-secrets.md,
+# anime-project-infra). 이 스크립트는 더 이상 live Secret을 읽어 Helm
+# parameter로 재주입하지 않음 — Application manifest 그대로 apply.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,8 +18,6 @@ ARGO_VERSION="${ARGO_VERSION:-v2.14.15}"
 INSTALL_URL="https://raw.githubusercontent.com/argoproj/argo-cd/${ARGO_VERSION}/manifests/install.yaml"
 APP_MANIFEST="${ROOT}/deploy/argocd/application-eks-helm.yaml"
 SYNC="${SYNC:-true}"
-OUT_DIR="${OUT_DIR:-/tmp/argocd-eks}"
-mkdir -p "${OUT_DIR}"
 
 need() { command -v "$1" >/dev/null || { echo "$1 필요" >&2; exit 1; }; }
 need kubectl
@@ -35,7 +35,7 @@ sanitize_app_spec() {
 
   # ignoreDifferences 도 live 에 구버전(terminatingReplicas 없음)이 남을 수 있어 파일 기준으로 재적용
   local ign_patch
-  ign_patch="$(python3 - "${APP_PATCHED}" <<'PY'
+  ign_patch="$(python3 - "${APP_MANIFEST}" <<'PY'
 import json, sys, yaml
 with open(sys.argv[1], encoding="utf-8") as f:
     doc = yaml.safe_load(f)
@@ -104,83 +104,8 @@ else
   echo "(secret not ready yet)"
 fi
 
-# Live Secret → Helm parameters (avoid overwriting EKS passwords with values.yaml lab defaults)
-# REQUIRE_LIVE_SECRETS=true(기본): live Secret 없으면 중단 (values-eks 빈 secrets + required)
-APP_PATCHED="${OUT_DIR}/application-eks-helm.patched.yaml"
-REQUIRE_LIVE_SECRETS="${REQUIRE_LIVE_SECRETS:-true}"
-python3 - "${APP_MANIFEST}" "${APP_PATCHED}" "${REQUIRE_LIVE_SECRETS}" <<'PY'
-import base64, json, subprocess, sys, yaml
-
-src, dst, require = sys.argv[1], sys.argv[2], sys.argv[3].lower() in ("1", "true", "yes")
-with open(src, encoding="utf-8") as f:
-    doc = yaml.safe_load(f)
-
-# Never ship ServerSideApply — kubectl apply may otherwise leave it from older applies
-opts = [
-    o for o in (doc.get("spec", {}).get("syncPolicy", {}).get("syncOptions") or [])
-    if o != "ServerSideApply=true" and not str(o).startswith("ServerSideApply=")
-]
-if "CreateNamespace=true" not in opts:
-    opts.append("CreateNamespace=true")
-if "RespectIgnoreDifferences=true" not in opts:
-    opts.append("RespectIgnoreDifferences=true")
-doc.setdefault("spec", {}).setdefault("syncPolicy", {})["syncOptions"] = opts
-
-params = []
-try:
-    raw = subprocess.check_output(
-        [
-            "kubectl", "-n", "aniverse", "get", "secret", "aniverse-app-secrets",
-            "-o", "json",
-        ],
-        stderr=subprocess.DEVNULL,
-        text=True,
-    )
-    data = json.loads(raw).get("data") or {}
-    for key in ("DJANGO_SECRET_KEY", "DB_PASSWORD", "DB_ROOT_PASSWORD"):
-        if key in data:
-            val = base64.b64decode(data[key]).decode("utf-8")
-            if not val:
-                continue
-            params.append({"name": f"secrets.{key}", "value": val})
-            print(f"  helm param secrets.{key} ← live secret", flush=True)
-except subprocess.CalledProcessError:
-    data = {}
-    print("  (no live aniverse-app-secrets)", flush=True)
-
-needed = {"secrets.DJANGO_SECRET_KEY", "secrets.DB_PASSWORD", "secrets.DB_ROOT_PASSWORD"}
-have = {p["name"] for p in params}
-missing = needed - have
-if missing and require:
-    print(
-        "ERROR: missing live secrets for: "
-        + ", ".join(sorted(missing))
-        + "\n  Create them once, e.g.:\n"
-        "  kubectl -n aniverse create secret generic aniverse-app-secrets \\\n"
-        "    --from-literal=DJANGO_SECRET_KEY=... \\\n"
-        "    --from-literal=DB_PASSWORD=... \\\n"
-        "    --from-literal=DB_ROOT_PASSWORD=...\n"
-        "  Or set REQUIRE_LIVE_SECRETS=false (lab only).",
-        file=sys.stderr,
-        flush=True,
-    )
-    sys.exit(1)
-if missing and not require:
-    print(f"  WARN: missing {sorted(missing)} — chart render may fail on empty values-eks secrets", flush=True)
-
-helm = doc.setdefault("spec", {}).setdefault("source", {}).setdefault("helm", {})
-existing = {p.get("name"): p for p in helm.get("parameters") or [] if isinstance(p, dict)}
-for p in params:
-    existing[p["name"]] = p
-helm["parameters"] = list(existing.values())
-
-with open(dst, "w", encoding="utf-8") as f:
-    yaml.safe_dump(doc, f, sort_keys=False, allow_unicode=True)
-print(f"Wrote {dst}", flush=True)
-PY
-
 echo "==> Apply Application aniverse-eks"
-kubectl apply -f "${APP_PATCHED}"
+kubectl apply -f "${APP_MANIFEST}"
 sanitize_app_spec
 
 if [ "${SYNC}" = "true" ]; then

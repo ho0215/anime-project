@@ -1,20 +1,20 @@
 # EKS 오버라이드 — secrets 는 git 에 두지 않음.
-# 주입: scripts/argocd-eks-install.sh (live Secret → helm.parameters)
-#    또는: helm … -f values-eks.yaml --set-string secrets.DJANGO_SECRET_KEY=... \
-#                                    --set-string secrets.DB_PASSWORD=... \
-#                                    --set-string secrets.DB_ROOT_PASSWORD=...
+# External Secrets Operator가 AWS Secrets Manager(aniverse/app-secrets)에서
+# 동기화 (docs/external-secrets.md). infra 쪽 IRSA/시크릿 생성은 modules/eks
+# enable_external_secrets + environments/dev/secrets.tf.
 
 image:
   # CI(docker-build)가 ECR push 후 sha-* 로 자동 갱신
   repository: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse
-  tag: sha-93a8ab09da55
+  tag: sha-2cbe25b2723f
   pullPolicy: Always
 
-# 빈 문자열 → secret.yaml required 실패. Argo/helm parameter 필수.
-secrets:
-  DJANGO_SECRET_KEY: ""
-  DB_PASSWORD: ""
-  DB_ROOT_PASSWORD: ""
+externalSecrets:
+  enabled: true
+  secretName: "aniverse/app-secrets"
+  region: ap-northeast-2
+  serviceAccountName: external-secrets
+  namespace: external-secrets
 
 # infra: module.eks app S3 IRSA (role name aniverse-web-s3-irsa)
 serviceAccount:
