@@ -24,6 +24,21 @@ spec:
       {{- if .Values.serviceAccount.create }}
       serviceAccountName: {{ .Values.serviceAccount.name }}
       {{- end }}
+      # 안티 어피니티 — aniverse-web 파드끼리 서로 다른 노드에 분산 배치
+      # preferred(선호)방식이라 노드가 부족해도 스케줄링 실패 없이 최대한 분산함
+      # topologyKey: kubernetes.io/hostname → 노드 단위로 분산
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - aniverse-web
+                topologyKey: kubernetes.io/hostname
       containers:
         - name: web
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
