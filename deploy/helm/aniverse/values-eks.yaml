@@ -39,6 +39,8 @@ config:
   RUN_MIGRATE: "true"
   # 대량 collectstatic 은 CI/노트북 권장. media put 은 Pod IRSA.
   RUN_COLLECTSTATIC: "false"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://tempo.monitoring.svc.cluster.local:4317"
+  OTEL_SERVICE_NAME: "aniverse-web"
 
 # destroy 후 빈 PVC 면 SQL 자동 복구 (Job → Git raw dump)
 dbRestore:
