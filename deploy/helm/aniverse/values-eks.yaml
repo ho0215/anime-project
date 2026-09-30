@@ -16,6 +16,13 @@ externalSecrets:
   serviceAccountName: external-secrets
   namespace: external-secrets
 
+# minReplicas=2 — topologySpreadConstraints(web-deployment.yaml)로 AZ 분산이
+# 실제 효과를 가지려면 항상 최소 2개는 떠 있어야 함(1개면 나눌 게 없음).
+# maxReplicas는 그대로 2 — resourceQuota.limitsCpu(3)를 넘지 않는 상한
+# (web 1cpu * 2 + db 500m = 2.5, values.yaml 주석 참고)이라 더 못 올림.
+autoscaling:
+  minReplicas: 2
+
 # infra: module.eks app S3 IRSA (role name aniverse-web-s3-irsa)
 serviceAccount:
   create: true

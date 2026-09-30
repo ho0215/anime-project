@@ -39,6 +39,17 @@ spec:
                       values:
                         - aniverse-web
                 topologyKey: kubernetes.io/hostname
+      # 위 안티 어피니티는 "같은 노드만" 피하고 AZ는 안 봄 — 노드 2개가 같은 AZ에
+      # 있어도 통과됨. topology.kubernetes.io/zone 기준으로 AZ 자체를 분산시켜서
+      # 가용영역 하나가 죽어도 나머지 AZ의 replica가 계속 서빙하게 함.
+      # ScheduleAnyway(선호) — AZ가 1개뿐인 상황(노드 축소 등)에서도 Pending 안 남.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: aniverse-web
       containers:
         - name: web
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
