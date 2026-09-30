@@ -41,6 +41,9 @@ config:
   RUN_COLLECTSTATIC: "false"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://tempo.monitoring.svc.cluster.local:4317"
   OTEL_SERVICE_NAME: "aniverse-web"
+  # ElastiCache — infra module.cache, Django Channels(웹소켓) 채널 레이어용.
+  # 없으면 settings.py가 조용히 no-op 채널 레이어로 폴백(REDIS_URL 빈 값).
+  REDIS_URL: "redis://aniverse-redis.5pbnwy.0001.apn2.cache.amazonaws.com:6379/0"
 
 # destroy 후 빈 PVC 면 SQL 자동 복구 (Job → Git raw dump)
 dbRestore:
