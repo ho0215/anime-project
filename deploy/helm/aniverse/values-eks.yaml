@@ -18,16 +18,18 @@ externalSecrets:
 
 # minReplicas=2 — topologySpreadConstraints(web-deployment.yaml)로 AZ 분산이
 # 실제 효과를 가지려면 항상 최소 2개는 떠 있어야 함(1개면 나눌 게 없음).
-# maxReplicas=3 — min=max=2였으면 HPA가 스케일업할 여지가 아예 없었음
+# maxReplicas=4 — min=max=2였으면 HPA가 스케일업할 여지가 아예 없었음
 # (2026-10-01 부하테스트로 발견: CPU가 target 50%를 10배 넘겨도 못 늘어남).
-# resourceQuota.limitsCpu/limitsMemory도 같이 올려야 함(web 1cpu*3 + db 500m = 3.5).
+# 노드(t3.medium) request는 파드당 100m/256Mi라 4개는 스케줄링에 전혀
+# 부담 없음 — resourceQuota.limitsCpu/limitsMemory만 같이 올리면 됨
+# (web 1cpu*4 + db 500m = 4.5).
 autoscaling:
   minReplicas: 2
-  maxReplicas: 3
+  maxReplicas: 4
 
 resourceQuota:
-  limitsCpu: "4"
-  limitsMemory: 4Gi
+  limitsCpu: "5"
+  limitsMemory: 5Gi
 
 # infra: module.eks app S3 IRSA (role name aniverse-web-s3-irsa)
 serviceAccount:
