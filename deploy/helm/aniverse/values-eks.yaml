@@ -72,6 +72,10 @@ persistence:
 ingress:
   className: alb
   host: aniverse.my
+  # Terraform output -raw waf_web_acl_arn (infra enable_waf=true apply 후)
+  # 비우면 어노테이션 생략 — TF 가 ALB 태그를 찾아 association 할 수 있음.
+  # apply 후 ARN 을 여기 넣고 Argo sync 하면 ALB 재생성 시에도 WAF 유지.
+  wafAclArn: ""
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
