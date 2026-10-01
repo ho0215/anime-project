@@ -15,6 +15,12 @@ uvicorn>=0.29.0
 daphne>=4.1.0
 channels>=4.1.0
 channels-redis>=4.2.0
+# channels-redis 4.3.0의 BZPOPMIN 기반 수신 루프(5초 블로킹, core.py의
+# brpop_timeout)가 redis-py 8.x의 비동기 클라이언트와 만나면 정상적인
+# "메시지 없음" 상황까지 TimeoutError로 떨어짐 (2026-10-01 발견, ElastiCache
+# 자체는 정상 — PING 34ms). channels-redis 4.2+가 실제로 맞춰 나온 redis-py
+# 5.x대로 고정.
+redis>=5.0,<6.0
 
 # Rich Text Editor (CKEditor)
 django-ckeditor>=6.7.0
