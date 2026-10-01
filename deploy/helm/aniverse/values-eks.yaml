@@ -30,6 +30,19 @@ autoscaling:
 resourceQuota:
   limitsCpu: "5"
   limitsMemory: 5Gi
+  # TEMP(2026-10-01): 노드 레벨 오토스케일링(Cluster Autoscaler) 동작 확인용.
+  # 기본 100m/256Mi로는 4개 떠도 기존 노드 2대 여유로 다 들어가서 CA가 트리거
+  # 안 됨 — web.resources.requests를 일부러 올려서 4개 합(3.6cpu)이 노드
+  # 여유를 넘게 만듦. 확인 끝나면 반드시 web.resources.requests랑 이
+  # requestsCpu/requestsMemory 둘 다 원복할 것.
+  requestsCpu: "5"
+  requestsMemory: 2Gi
+
+web:
+  resources:
+    requests:
+      cpu: 900m
+      memory: 256Mi
 
 # infra: module.eks app S3 IRSA (role name aniverse-web-s3-irsa)
 serviceAccount:
