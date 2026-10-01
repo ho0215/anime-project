@@ -33,7 +33,10 @@ django-storages
 django-environ
 
 # OpenTelemetry (Tracing)
+# [asgi] extra 필수 — Daphne(ASGI)로 서빙 중이라 이게 없으면 DjangoInstrumentor가
+# 실제 요청에 스팬을 못 붙임(수동으로 만든 테스트 스팬은 되는데 진짜 요청은
+# 트레이스가 하나도 안 남는 증상으로 발견, 2026-10-01).
 opentelemetry-sdk>=1.20.0
-opentelemetry-instrumentation-django>=0.41b0
+opentelemetry-instrumentation-django[asgi]>=0.41b0
 opentelemetry-instrumentation-requests>=0.41b0
 opentelemetry-exporter-otlp-proto-grpc>=1.20.0
