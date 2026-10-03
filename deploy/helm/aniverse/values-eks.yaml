@@ -80,6 +80,8 @@ persistence:
 ingress:
   className: alb
   host: aniverse.my
+  # Terraform output -raw waf_web_acl_arn (apply 2026-10-01)
+  wafAclArn: "arn:aws:wafv2:ap-northeast-2:841535407395:regional/webacl/aniverse-alb-waf/536cd3c3-04ce-42fd-ac5b-1aa715a4b87b"
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
