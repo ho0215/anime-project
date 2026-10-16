@@ -49,7 +49,16 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: db-backup
-              image: amazon/aws-cli:latest
+              # kubectl 미리 설치된 전용 이미지 (deploy/docker/db-backup-tools/Dockerfile) —
+              # 매 실행마다 yum install로 설치하던 것이 OOM/hang 원인이었음(2026-10-13, 10-16).
+              image: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:db-backup-tools
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
               env:
                 - name: S3_BUCKET
                   value: {{ .Values.backup.s3Bucket | quote }}
@@ -64,7 +73,6 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  yum install -y kubectl --quiet || curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && chmod +x kubectl && mv kubectl /usr/local/bin/
                   DATE=$(date +%Y%m%d-%H%M%S)
                   echo "백업 시작: ${DATE}"
                   kubectl exec -n aniverse aniverse-db-0 -- mariadb-dump -uroot -p${MYSQL_PWD} aniverse > /tmp/backup-${DATE}.sql
