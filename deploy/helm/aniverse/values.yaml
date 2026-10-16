@@ -118,6 +118,8 @@ ingress:
   enabled: true
   className: nginx
   host: aniverse.lab.local
+  # EKS ALB WAF — values-eks.yaml 에서 Terraform waf_web_acl_arn 로 채움
+  wafAclArn: ""
   annotations: {}
   tls:
     enabled: false

@@ -221,9 +221,28 @@ aws acm list-certificates --region "${REGION}" --certificate-statuses PENDING_VA
 done
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Terraform module.waf → name aniverse-alb-waf (없으면 스킵)
+WAF_NAME="${WAF_WEB_ACL_NAME:-aniverse-alb-waf}"
+WAF_ARN="${WAF_WEB_ACL_ARN:-}"
+if [ -z "${WAF_ARN}" ]; then
+  WAF_ARN="$(aws wafv2 list-web-acls --scope REGIONAL --region "${REGION}" \
+    --query "WebACLs[?Name=='${WAF_NAME}'].ARN | [0]" --output text 2>/dev/null || true)"
+fi
+if [ -n "${WAF_ARN}" ] && [ "${WAF_ARN}" != "None" ] && [ "${WAF_ARN}" != "null" ]; then
+  echo "==> WAF Web ACL: ${WAF_ARN}"
+else
+  echo "==> WAF Web ACL 없음 (infra enable_waf apply 후 연결) — HTTPS bind 계속"
+  WAF_ARN=""
+fi
+
 echo "==> Helm upgrade (host=${DOMAIN}, HTTPS)"
 OVERLAY="$(mktemp)"
 trap 'rm -f "${OVERLAY}"' EXIT
+WAF_LINE=""
+if [ -n "${WAF_ARN}" ]; then
+  WAF_LINE="  wafAclArn: \"${WAF_ARN}\""
+fi
 cat > "${OVERLAY}" <<EOF
 config:
   DJANGO_ALLOWED_HOSTS: "${DOMAIN},${WWW},*"
@@ -231,6 +250,7 @@ config:
   USE_HTTPS: "True"
 ingress:
   host: ${DOMAIN}
+${WAF_LINE}
   annotations:
     alb.ingress.kubernetes.io/certificate-arn: "${CERT_ARN}"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
@@ -262,4 +282,8 @@ echo
 echo "OK"
 echo "  dig +short NS ${DOMAIN}"
 echo "  curl -sI https://${DOMAIN}/health/"
+if [ -n "${WAF_ARN}" ]; then
+  echo "  WAF: ${WAF_ARN}"
+  echo "  (GitOps 유지: values-eks.yaml ingress.wafAclArn 에 ARN 커밋 권장)"
+fi
 echo "  (ALB 443 반영 1~3분)"
