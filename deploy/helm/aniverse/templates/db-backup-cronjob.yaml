@@ -51,7 +51,9 @@ spec:
             - name: db-backup
               # kubectl 미리 설치된 전용 이미지 (deploy/docker/db-backup-tools/Dockerfile) —
               # 매 실행마다 yum install로 설치하던 것이 OOM/hang 원인이었음(2026-10-13, 10-16).
-              image: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse:db-backup-tools
+              # 메인 앱(aniverse)과 변경 빈도가 달라 별도 ECR 레포로 분리(2026-10-16) —
+              # 같은 레포 태그로 두면 메인 앱이 쌓이면서 라이프사이클 정책에 밀려 삭제될 위험이 있었음.
+              image: 841535407395.dkr.ecr.ap-northeast-2.amazonaws.com/aniverse-db-backup-tools:latest
               resources:
                 requests:
                   cpu: 100m
